@@ -1,17 +1,58 @@
 <?php
-include 'database.php';
-header('Content-Type: application/json');
+include '../database.php';
+header('Content-Type: application/json; charset=utf-8');
 
-$data = json_decode(file_get_contents('php://input'), true);
-$staff_id = $data['staff_id'];
+// Chỉ chấp nhận phương thức POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-$sql = "DELETE FROM staff_accounts WHERE staff_id=?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $staff_id);
+    // Lấy dữ liệu từ JSON gửi lên
+    $data = json_decode(file_get_contents("php://input"), true);
+    $user_id = isset($data['user_id']) ? intval($data['user_id']) : 0;
 
-if ($stmt->execute()) {
-    echo json_encode(['success' => true, 'message' => 'Xóa thành công!']);
+    if ($user_id > 0) {
+        // Kiểm tra xem nhân viên có tồn tại không
+        $check = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+        $check->bind_param("i", $user_id);
+        $check->execute();
+        $result = $check->get_result();
+
+        if ($result->num_rows === 0) {
+            echo json_encode([
+                "status" => "error",
+                "message" => "Không tìm thấy nhân viên cần xoá!"
+            ]);
+            exit;
+        }
+
+        // Xoá nhân viên
+        $delete = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+        $delete->bind_param("i", $user_id);
+
+        if ($delete->execute()) {
+            echo json_encode([
+                "status" => "success",
+                "message" => "Xoá nhân viên thành công!"
+            ]);
+        } else {
+            echo json_encode([
+                "status" => "error",
+                "message" => "Lỗi khi xoá nhân viên: " . $delete->error
+            ]);
+        }
+
+        $delete->close();
+    } else {
+        echo json_encode([
+            "status" => "error",
+            "message" => "Thiếu hoặc sai user_id!"
+        ]);
+    }
 } else {
-    echo json_encode(['success' => false, 'message' => 'Xóa thất bại!']);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Phương thức không hợp lệ!"
+    ]);
 }
-?> 
+
+$conn->close();
+?>
