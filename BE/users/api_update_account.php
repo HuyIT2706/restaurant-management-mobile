@@ -1,5 +1,12 @@
 <?php
 include '../database.php';
+include '../auth.php';
+$user_data = verifyToken(); // Kiểm tra token
+if ($user_data->user_role !== 'QuanLy') {
+    echo json_encode(["success" => false, "message" => "Bạn không có quyền truy cập!"]);
+    exit;
+}
+
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

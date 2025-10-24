@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-require_once './vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 include('./database.php'); 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -8,6 +8,7 @@ error_reporting(E_ALL);
 
 use Firebase\JWT\JWT;
 use Dotenv\Dotenv;
+use Firebase\JWT\Key; //thêm dòng này của băng
 
 // load .env
 $dotenv = Dotenv::createImmutable(__DIR__);
