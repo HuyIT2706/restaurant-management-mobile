@@ -67,6 +67,10 @@ configurations.named("kapt") {
 }
 
 dependencies {
+
+    // Material Icons Extended (dùng cho FilterList, Refresh, ArrowBack, v.v.)
+    implementation("androidx.compose.material:material-icons-extended")
+
     // Existing dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

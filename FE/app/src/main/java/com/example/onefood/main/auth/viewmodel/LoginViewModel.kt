@@ -44,14 +44,21 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
             try {
-                val baseUrl = "http://10.0.2.2/BeMobile/BE/login.php"
+                // Dùng IP LAN và đường dẫn đúng tới thư mục trong htdocs
+                val baseUrl = "http://10.235.93.241/BeMobie/restaurant-management-mobile/BE/login.php"
+
 
                 val respText = client.post(baseUrl) {
                     contentType(ContentType.Application.Json)
                     setBody(mapOf("phone" to phone, "password" to password))
                 }.body<String>()
 
-                val json = Json.parseToJsonElement(respText).jsonObject
+                // Log response thô để debug
+                android.util.Log.d("LoginVM", "Raw response: $respText")
+
+                // Config parser chấp nhận JSON không chuẩn
+                val parser = Json { isLenient = true }
+                val json = parser.parseToJsonElement(respText).jsonObject
                 val success = json["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
                 val message = json["message"]?.jsonPrimitive?.content
                 val token = json["token"]?.jsonPrimitive?.content
