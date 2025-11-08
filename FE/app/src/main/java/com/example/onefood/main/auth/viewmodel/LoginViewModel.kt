@@ -45,7 +45,7 @@ class LoginViewModel : ViewModel() {
             _loginState.value = LoginState.Loading
             try {
                 // Dùng IP LAN và đường dẫn đúng tới thư mục trong htdocs
-                val baseUrl = "http://10.235.93.241/BeMobie/restaurant-management-mobile/BE/login.php"
+                val baseUrl = "http://10.35.4.241/BeMobie/restaurant-management-mobile/BE/login.php"
 
 
                 val respText = client.post(baseUrl) {

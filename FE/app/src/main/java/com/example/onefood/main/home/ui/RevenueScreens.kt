@@ -1,4 +1,4 @@
-package com.example.onefood.main.revenue.ui
+package com.example.onefood.main.home.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,16 +27,7 @@ import androidx.navigation.NavController
 import com.example.onefood.R
 import java.text.NumberFormat
 import java.util.*
-
-data class RevenueItem(
-    val id: Int,
-    val name: String,
-    val category: String,
-    val quantity: Int,
-    val revenue: Int,
-    val bestSeller: Boolean,
-    val imageRes: Int
-)
+import com.example.onefood.data.models.RevenueItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

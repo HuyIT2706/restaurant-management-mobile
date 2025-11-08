@@ -14,14 +14,14 @@ import androidx.navigation.navArgument
 import com.example.onefood.main.auth.ui.LoginScreen
 import com.example.onefood.main.home.ui.HomeScreen
 import com.example.onefood.main.home.ui.TablesScreen
-import com.example.onefood.main.revenue.ui.RevenueListScreen
-import com.example.onefood.main.revenue.ui.RevenueDetailScreen
+import com.example.onefood.main.home.ui.RevenueListScreen
+import com.example.onefood.main.home.ui.RevenueDetailScreen
 
 // 🎁 Import đầy đủ khuyến mãi
-import com.example.onefood.main.promotion.ui.PromotionListScreen
-import com.example.onefood.main.promotion.ui.PromotionAddScreen
-import com.example.onefood.main.promotion.ui.PromotionEditScreen
-import com.example.onefood.main.promotion.ui.PromotionDetailScreen
+import com.example.onefood.main.home.ui.PromotionListScreen
+import com.example.onefood.main.home.ui.PromotionAddScreen
+import com.example.onefood.main.home.ui.PromotionEditScreen
+import com.example.onefood.main.home.ui.PromotionDetailScreen
 
 /**
  * Centralized routing for the app.

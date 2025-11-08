@@ -1,4 +1,4 @@
-package com.example.onefood.main.promotion.ui
+package com.example.onefood.main.home.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

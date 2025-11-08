@@ -1,4 +1,4 @@
-package com.example.onefood.main.promotion.ui
+package com.example.onefood.main.home.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.onefood.data.model.PromotionItem
 
 @Composable
 fun SearchBarWithFilter(

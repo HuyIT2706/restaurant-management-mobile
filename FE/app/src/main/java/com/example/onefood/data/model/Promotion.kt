@@ -1,4 +1,4 @@
-package com.example.onefood.main.home.ui
+package com.example.onefood.data.model
 
 data class PromotionItem(
     val id: Int,
