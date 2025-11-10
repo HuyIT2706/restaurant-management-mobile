@@ -1,10 +1,19 @@
 package com.example.onefood.di
 
+import com.example.onefood.data.api.ProductApiService
 import com.example.onefood.data.api.TableApiService
+import com.example.onefood.data.api.OrderApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -17,6 +26,38 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    private const val BASE_URL = "http://10.0.2.2/BeMobile/BE/"
+
+    // Ktor HttpClient for Product API
+    @Provides
+    @Singleton
+    fun provideKtorClient(): HttpClient {
+        return HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                })
+            }
+            install(Logging) {
+                level = LogLevel.BODY
+            }
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun provideProductApiService(client: HttpClient): ProductApiService {
+        return ProductApiService(client, BASE_URL)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOrderApiService(client: HttpClient): OrderApiService {
+        return OrderApiService(client, BASE_URL)
+    }
+
+    // Retrofit for Table API (keep existing)
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
@@ -39,7 +80,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://10.0.2.2/BeMobile/BE/")
+            .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()

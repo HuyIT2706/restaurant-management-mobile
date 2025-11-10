@@ -1,29 +1,86 @@
 <?php
-session_start();
-include 'database.php';
-
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'error' => 'Chưa đăng nhập']);
+include '../database.php';
+include '../auth.php';
+$user_data = verifyToken(); // Kiểm tra token
+if ($user_data->user_role !== 'QuanLy') {
+    echo json_encode(["success" => false, "message" => "Bạn không có quyền truy cập!"]);
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
+header('Content-Type: application/json; charset=utf-8');
 
-$sql = "SELECT u.lastname, u.firstname, u.phone, r.rank_name 
-        FROM users u 
-        JOIN ranks r ON u.rank_id = r.rank_id 
-        WHERE u.user_id = $user_id";
+// Chỉ chấp nhận phương thức POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = json_decode(file_get_contents("php://input"), true);
 
-$result = $conn->query($sql);
+    $user_id = intval($data['user_id'] ?? 0);
 
-if ($result && $result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    echo json_encode([
-        'name' => $row['lastname'] . ' ' . $row['firstname'],
-        'phone' => $row['phone'],
-        'rank' => $row['rank_name']
-    ]);
+    if ($user_id <= 0) {
+        echo json_encode([
+            "status" => "error",
+            "message" => "Thiếu hoặc sai user_id!"
+        ]);
+        exit;
+    }
+
+    // Lấy thông tin chi tiết nhân viên theo user_id
+    $sql = "SELECT 
+                user_id,
+                user_firstname,
+                user_lastname,
+                user_gender,
+                user_phone,
+                user_role,
+                user_wage,
+                user_status,
+                user_image,
+                user_created_at,
+                user_updated_at
+            FROM users
+            WHERE user_id = ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $result->num_rows > 0) {
+        $user = $result->fetch_assoc();
+
+        // Gộp họ + tên thành fullname
+        $user['fullname'] = trim($user['user_firstname'] . ' ' . $user['user_lastname']);
+
+        echo json_encode([
+            "status" => "success",
+            "data" => [
+                "user_id" => intval($user['user_id']),
+                "fullname" => $user['fullname'],
+                "firstname" => $user['user_firstname'],
+                "lastname" => $user['user_lastname'],
+                "gender" => $user['user_gender'],
+                "phone" => $user['user_phone'],
+                "role" => $user['user_role'],
+                "wage" => floatval($user['user_wage']),
+                "status" => intval($user['user_status']),
+                "image" => $user['user_image'],
+                "created_at" => $user['user_created_at'],
+                "updated_at" => $user['user_updated_at']
+            ]
+        ]);
+    } else {
+        echo json_encode([
+            "status" => "error",
+            "message" => "Không tìm thấy nhân viên!"
+        ]);
+    }
+
+    $stmt->close();
 } else {
-    echo json_encode(['success' => false, 'error' => 'Không tìm thấy người dùng']);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Phương thức không hợp lệ!"
+    ]);
 }
+
+$conn->close();
 ?>

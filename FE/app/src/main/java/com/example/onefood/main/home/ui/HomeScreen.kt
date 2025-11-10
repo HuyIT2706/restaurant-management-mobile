@@ -1,10 +1,7 @@
 package com.example.onefood.main.home.ui
 
-import android.hardware.camera2.params.BlackLevelPattern
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -50,7 +47,6 @@ fun HomeScreen(navController: NavController, role: String = "QuanLy") {
         HomeFeature("Khuyến mại", R.drawable.ic_promo, BeigeLight, "promotion_management_route", "QuanLy")
     )
 
-    // Logic lọc theo vai trò (Chỉ Quản lý mới thấy tất cả)
     val filteredFeatures = features.filter { feature ->
         feature.requiredRole == null || role == "QuanLy"
     }
@@ -98,13 +94,6 @@ fun TopBarContent() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_logo_cart),
-            contentDescription = "App Logo",
-            modifier = Modifier
-                .size(40.dp)
-        )
-
         Text(
             text = "ONE FOOD",
             fontSize = 20.sp,
@@ -112,9 +101,12 @@ fun TopBarContent() {
             color = RedPrimary
         )
 
-        IconButton(onClick = { /* Mở Sidebar Menu */ }) {
-            Icon(painterResource(id = R.drawable.ic_menu_hamburguer), contentDescription = "Menu", tint = Color.Black, modifier = Modifier.size(32.dp))
-        }
+        Image(
+            painter = painterResource(id = R.drawable.ic_logo_cart),
+            contentDescription = "App Logo",
+            modifier = Modifier
+                .size(40.dp)
+        )
     }
 }
 

@@ -1,16 +1,33 @@
 <?php
-include('database.php'); 
+include '../database.php';
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
 
-header('Content-Type: application/json');
+$sql = "SELECT table_id, table_name, status FROM tables ORDER BY table_id ASC";
+$result = $conn->query($sql);
 
-$sql = "SELECT table_id AS id, table_name AS name, status FROM tables ORDER BY table_id ASC";
-$result = mysqli_query($conn, $sql);
-
-$tables = [];
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $tables[] = $row;
-    }
+if (!$result) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Lỗi truy vấn: ' . $conn->error
+    ], JSON_UNESCAPED_UNICODE);
+    exit();
 }
 
-echo json_encode($tables);
+$tables = [];
+while ($row = $result->fetch_assoc()) {
+    $tables[] = [
+        'id' => (int)$row['table_id'],
+        'name' => $row['table_name'],
+        'status' => $row['status']
+    ];
+}
+
+echo json_encode([
+    'success' => true,
+    'count' => count($tables),
+    'data' => $tables
+], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+$conn->close();
+?>

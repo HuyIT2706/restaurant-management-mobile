@@ -20,7 +20,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             OneFoodTheme {
-                // Use centralized routing composable
                 com.example.onefood.navigation.RoutingApp()
             }
         }
@@ -29,7 +28,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun OneFoodApp() {
-    // kept for preview compatibility: delegate to RoutingApp
     com.example.onefood.navigation.RoutingApp()
 }
 

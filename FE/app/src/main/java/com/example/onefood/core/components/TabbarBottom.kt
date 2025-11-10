@@ -50,13 +50,16 @@ fun BottomTabBar(navController: NavController, homeRole: String? = null) {
 			val items = listOf(
 				Triple(R.drawable.ic_home_hv, "Trang chủ", homeRoute),
 				Triple(R.drawable.ic_order, "Gọi món", "goi_mon_route"),
-				Triple(R.drawable.ic_product, "Lịch sử mua hàng", "purchase_history_route"),
+				Triple(R.drawable.ic_product, "Giỏ hàng", "purchase_history_route"),
 				Triple(R.drawable.ic_profile, "Tài khoản", "profile_route")
 			)
 
 			items.forEach { (iconId, label, route) ->
 				val isSelected = when {
 					route.startsWith("home") -> currentRoute?.startsWith("home") == true
+					route == "goi_mon_route" -> currentRoute == route || currentRoute?.startsWith("order_menu_route") == true
+					route == "purchase_history_route" -> currentRoute == route || currentRoute?.startsWith("table_order_detail") == true
+					route == "profile_route" -> currentRoute == route || currentRoute == "edit_user"
 					else -> currentRoute == route
 				}
 
