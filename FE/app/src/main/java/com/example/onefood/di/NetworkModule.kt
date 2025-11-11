@@ -26,7 +26,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "http://10.0.2.2/BeMobile/BE/"
+    private const val BASE_URL = "http://10.35.4.241/BeMobie/restaurant-management-mobile/BE/"
 
     // Ktor HttpClient for Product API
     @Provides
