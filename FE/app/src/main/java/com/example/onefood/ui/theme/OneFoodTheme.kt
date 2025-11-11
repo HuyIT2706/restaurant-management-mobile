@@ -24,6 +24,9 @@ val BoderColor = Color(0xFFF9DB2CE)
 val TableGreen = Color(0xFF4CAF50)
 
 val TableBeige = Color(0xFFF9F3EB)
+val BoxProduct =Color(0xFFF4E4CD)
+
+val colorCategory = Color(0xFFF14B8B8)
 private val DarkColorScheme = darkColorScheme(
     primary = RedPrimary,
     secondary = RedPrimary,

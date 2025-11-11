@@ -5,6 +5,7 @@ plugins {
 
     id("com.google.dagger.hilt.android") version "2.47"
     id("org.jetbrains.kotlin.kapt")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.20"
 }
 buildscript {
     configurations.classpath {
@@ -30,15 +31,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"   
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),        
-                "proguard-rules.pro"
-            )
-        }
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -48,6 +40,16 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),        
+                "proguard-rules.pro"
+            )
+        }
     }
 }
 
@@ -87,6 +89,9 @@ dependencies {
     
     // Moshi for JSON parsing
     implementation("com.squareup.moshi:moshi-kotlin:1.14.0")
+    implementation(libs.engage.core)
+    implementation(libs.androidx.compose.foundation)
+    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.14.0")
 
     implementation("com.google.dagger:hilt-android:2.47")
     kapt("com.google.dagger:hilt-android-compiler:2.47")
@@ -108,6 +113,7 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:2.3.7")
     implementation("io.ktor:ktor-client-core:2.3.7")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
+    implementation("io.ktor:ktor-client-logging:2.3.7")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")    
     implementation("io.coil-kt:coil-compose:2.5.0")

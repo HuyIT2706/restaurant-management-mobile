@@ -2,6 +2,7 @@ package com.example.onefood.main.home.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,8 +10,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,133 +26,100 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.onefood.R
+import com.example.onefood.ui.theme.RedPrimary
 import java.text.NumberFormat
 import java.util.*
-import com.example.onefood.data.models.RevenueItem
+
+data class RevenueItem(
+    val id: Int,
+    val name: String,
+    val category: String,
+    val quantity: Int,
+    val revenue: Int,
+    val bestSeller: Boolean,
+    val imageRes: Int
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RevenueListScreen(navController: NavController) {
-    var search by remember { mutableStateOf("") }
-    var filter by remember { mutableStateOf("Tất cả") }
-    var showFilter by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    val categories = listOf("Tất cả", "Lẩu", "Nướng", "Hải sản", "Món thêm", "Khai vị", "Cơm", "Xào", "Nước")
+    val items = remember {
+        listOf(
+            RevenueItem(1, "Lẩu 4 ngăn", "Lẩu", 4, 5_000_000, true, R.drawable.img_sp1),
+            RevenueItem(2, "Sườn heo nướng mật ong", "Nướng", 2, 320_000, false, R.drawable.img_sp1),
+            RevenueItem(3, "Cá hồi xông khói", "Món thêm", 4, 240_000, false, R.drawable.img_sp1)
+        )
+    }
 
-    val items = listOf(
-        RevenueItem(1, "Lẩu 4 ngăn", "Lẩu", 4, 5_000_000, true, R.drawable.lau),
-        RevenueItem(2, "Sườn heo nướng mật ong", "Nướng", 2, 320_000, false, R.drawable.suon),
-        RevenueItem(3, "Cá hồi xông khói", "Món thêm", 4, 240_000, false, R.drawable.cahoi)
-    )
+    val filteredItems = items.filter { 
+        it.name.contains(searchQuery, ignoreCase = true) ||
+        it.category.contains(searchQuery, ignoreCase = true)
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Doanh thu", fontWeight = FontWeight.Bold) },
+            CenterAlignedTopAppBar(
+                title = { Text("Thống kê", fontWeight = FontWeight.Medium) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Quay lại",
+                            tint = Color.Black
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1C1C1E),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+                }
             )
         },
-        containerColor = Color(0xFF1C1C1E)
-    ) { padding ->
+        modifier = Modifier.fillMaxSize().background(Color.White)
+    ) { paddingValues ->
         Column(
-            Modifier
-                .padding(padding)
-                .padding(12.dp)
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
+            // Search bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Tìm kiếm") },
+                leadingIcon = { 
+                    Icon(
+                        Icons.Default.Search, 
+                        contentDescription = "Tìm",
+                        tint = Color.Gray
+                    ) 
+                },
+                shape = RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    unfocusedContainerColor = Color(0xFFF0F0F0),
+                    focusedContainerColor = Color(0xFFF0F0F0),
+                    cursorColor = RedPrimary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                singleLine = true
+            )
 
-            // 🔍 Thanh tìm kiếm + tải lại + lọc
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Revenue List
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    placeholder = {
-                        Text(
-                            "Tìm món theo tên",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        disabledContainerColor = Color.White,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        cursorColor = Color.Black
-                    ),
-                    textStyle = LocalTextStyle.current.copy(color = Color.Black),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                )
-
-                Spacer(Modifier.width(6.dp))
-
-                IconButton(
-                    onClick = { search = "" },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.White, shape = CircleShape)
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Tải lại", tint = Color(0xFF444444))
-                }
-
-                Spacer(Modifier.width(6.dp))
-
-                Box {
-                    IconButton(
-                        onClick = { showFilter = true },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color.White, shape = CircleShape)
-                    ) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Lọc", tint = Color(0xFF444444))
-                    }
-                    DropdownMenu(
-                        expanded = showFilter,
-                        onDismissRequest = { showFilter = false }
-                    ) {
-                        categories.forEach {
-                            DropdownMenuItem(
-                                text = { Text(it) },
-                                onClick = {
-                                    filter = it
-                                    showFilter = false
-                                }
-                            )
+                items(filteredItems) { item ->
+                    RevenueListItem(
+                        item = item,
+                        onClick = {
+                            navController.navigate("revenue_detail/${item.id}")
                         }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            // 📋 Danh sách món doanh thu
-            LazyColumn {
-                items(items.filter {
-                    (filter == "Tất cả" || it.category == filter) &&
-                            it.name.contains(search, ignoreCase = true)
-                }) { dish ->
-                    RevenueListItem(dish) {
-                        navController.navigate("revenue_detail/${dish.id}")
-                    }
+                    )
                 }
             }
         }
@@ -165,63 +133,88 @@ fun RevenueListItem(item: RevenueItem, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2E)),
-        elevation = CardDefaults.cardElevation(6.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Product Image
             Image(
                 painter = painterResource(id = item.imageRes),
                 contentDescription = item.name,
                 modifier = Modifier
                     .size(64.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFF0F0F0)),
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(Modifier.width(10.dp))
-
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            // Product Info
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(
-                        item.name,
+                        text = item.name,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = Color.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (item.bestSeller) {
-                        Spacer(Modifier.width(6.dp))
-                        Text("🔥 Bán chạy", color = Color(0xFF4CAF50), fontSize = 12.sp)
+                        Text(
+                            text = "🔥 Bán chạy",
+                            color = Color(0xFF4CAF50),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
-                Text(item.category, color = Color.Gray, fontSize = 12.sp)
-                Text("SL: ${item.quantity}", color = Color.Gray, fontSize = 12.sp)
+                Text(
+                    text = item.category,
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "SL: ${item.quantity}",
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
             }
 
-            Text(
-                "$formattedRevenue đ",
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                fontSize = 14.sp
-            )
+            // Revenue
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = "$formattedRevenue đ",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = RedPrimary
+                )
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RevenueDetailScreen(id: Int, navController: NavController) {
     var selectedDate by remember { mutableStateOf("29-09-2025") }
     val showDatePicker = remember { mutableStateOf(false) }
 
-    val dish = RevenueItem(id, "Lẩu 4 ngăn", "Lẩu", 4, 5_000_000, true, R.drawable.lau)
+    val dish = RevenueItem(id, "Lẩu 4 ngăn", "Lẩu", 4, 5_000_000, true, R.drawable.img_sp1)
     val orders = listOf(
         Triple("DH49", "1", "22:09:26"),
         Triple("DH44", "1", "20:59:55"),
@@ -230,82 +223,159 @@ fun RevenueDetailScreen(id: Int, navController: NavController) {
     )
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Chi tiết doanh thu", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
-                    }
-                }
-            )
-        }
-    ) { padding ->
+        modifier = Modifier.fillMaxSize().background(Color.White)
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .padding(padding)
-                .padding(12.dp)
+                .padding(paddingValues)
+                .fillMaxSize()
         ) {
-            Image(
-                painter = painterResource(id = dish.imageRes),
-                contentDescription = dish.name,
+            // Header
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-            Spacer(Modifier.height(12.dp))
-            Text("Chi tiết món #$id", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(dish.name, color = Color.Gray)
-
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(top = 50.dp, start = 16.dp, end = 16.dp, bottom = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Ngày: $selectedDate", color = Color.Gray)
-                IconButton(onClick = { showDatePicker.value = true }) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = "Chọn ngày")
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Mã đơn", fontWeight = FontWeight.Bold)
-                Text("SL", fontWeight = FontWeight.Bold)
-                Text("Giá", fontWeight = FontWeight.Bold)
-                Text("Thời gian", fontWeight = FontWeight.Bold)
-            }
-            HorizontalDivider()
-
-            orders.forEach {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                IconButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    Text(it.first)
-                    Text(it.second)
-                    Text("430.000 đ")
-                    Text(it.third)
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Quay lại",
+                        tint = Color.Black,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
-                HorizontalDivider()
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Chi tiết doanh thu",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
             }
 
-            Spacer(Modifier.height(12.dp))
-            Text("Tổng SL: 4", fontWeight = FontWeight.Bold)
-            Text(
-                "Tổng tiền: 1.660.000 VND",
-                color = Color(0xFFEE6C4D),
-                fontWeight = FontWeight.Bold
-            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    // Product Image
+                    Image(
+                        painter = painterResource(id = dish.imageRes),
+                        contentDescription = dish.name,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                item {
+                    Column {
+                        Text(
+                            text = "Chi tiết món #$id",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = dish.name,
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Ngày: $selectedDate",
+                            fontSize = 14.sp,
+                            color = Color.Black
+                        )
+                        IconButton(onClick = { showDatePicker.value = true }) {
+                            Icon(
+                                Icons.Default.FavoriteBorder,
+                                contentDescription = "Chọn ngày",
+                                tint = Color.Black
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Header Row
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Mã đơn", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("SL", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("Giá", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("Thời gian", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                            HorizontalDivider(color = Color(0xFFE0E0E0))
+
+                            // Order Items
+                            orders.forEach { order ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(order.first, fontSize = 14.sp, color = Color.Black)
+                                    Text(order.second, fontSize = 14.sp, color = Color.Black)
+                                    Text("430.000 đ", fontSize = 14.sp, color = Color.Black)
+                                    Text(order.third, fontSize = 14.sp, color = Color.Black)
+                                }
+                                HorizontalDivider(color = Color(0xFFE0E0E0))
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Total
+                            Column {
+                                Text(
+                                    text = "Tổng SL: 4",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                                Text(
+                                    text = "Tổng tiền: 1.660.000 VND",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RedPrimary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -314,10 +384,10 @@ fun RevenueDetailScreen(id: Int, navController: NavController) {
             onDismissRequest = { showDatePicker.value = false },
             confirmButton = {
                 TextButton(onClick = { showDatePicker.value = false }) {
-                    Text("OK")
+                    Text("OK", color = RedPrimary)
                 }
             },
-            title = { Text("Chọn ngày") },
+            title = { Text("Chọn ngày", fontWeight = FontWeight.Bold) },
             text = { Text("Tính năng chọn ngày sẽ được thêm sau.") }
         )
     }

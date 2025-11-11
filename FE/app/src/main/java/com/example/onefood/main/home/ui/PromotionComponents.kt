@@ -1,6 +1,7 @@
 package com.example.onefood.main.home.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,10 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.onefood.R
 import com.example.onefood.data.model.PromotionItem
+import com.example.onefood.ui.theme.RedPrimary
 
 @Composable
 fun SearchBarWithFilter(
@@ -79,40 +83,111 @@ fun SearchBarWithFilter(
 }
 
 @Composable
-fun PromotionListItem(promo: PromotionItem, onClick: () -> Unit, onDelete: () -> Unit) {
+fun PromotionListItem(
+    promo: PromotionItem, 
+    onEditClick: () -> Unit, 
+    onDelete: () -> Unit,
+    onPromotionClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .clickable { onClick() },
+            .clickable { onPromotionClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF6F6F6))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("${promo.id}", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(promo.code, fontWeight = FontWeight.Bold)
-                Text("SL còn: ${promo.quantity}", color = Color.Gray, fontSize = 13.sp)
-                Text("Từ ${promo.startDate} - ${promo.endDate}", color = Color.Gray, fontSize = 13.sp)
+                Text(
+                    text = promo.code,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "SL còn: ${promo.quantity}",
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+                Text(
+                    text = "Từ ${promo.startDate} - ${promo.endDate}",
+                    fontSize = 13.sp,
+                    color = Color.Gray
+                )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Box(
-                    Modifier
+                    modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(if (promo.status) Color(0xFF4CAF50) else Color.Red)
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Text(if (promo.status) "Hoạt động" else "Không hoạt động", color = Color.White, fontSize = 12.sp)
+                    Text(
+                        text = if (promo.status) "Hoạt động" else "Không hoạt động",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(promo.discount, color = Color(0xFFFF9800), fontWeight = FontWeight.Bold)
+                Text(
+                    text = promo.discount,
+                    color = Color(0xFFFF9800),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Gray)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Edit Button
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            Color.White,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                        .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(6.dp))
+                        .clickable { onEditClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_update),
+                        contentDescription = "Chỉnh sửa",
+                        tint = Color.Black,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                
+                // Delete Button
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            RedPrimary,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                        .clickable(onClick = onDelete),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_trash),
+                        contentDescription = "Xóa",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }

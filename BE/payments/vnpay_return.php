@@ -1,9 +1,21 @@
 <?php
-require_once 'config.php';
+// Enable error logging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
 
-$vnp_HashSecret = VNPAY_HASH_SECRET;
+include('../database.php'); // Kết nối CSDL và load .env
 
-$vnp_SecureHash = $_GET['vnp_SecureHash'];
+$vnp_HashSecret = $_ENV['VNPAY_HASH_SECRET'];
+$app_redirect_url = "onefood://payment_result"; // URL chuyển hướng cho ứng dụng di động
+
+// Log all incoming data for debugging
+error_log("=== VNPay Return Callback ===");
+error_log("GET params: " . print_r($_GET, true));
+error_log("REQUEST URI: " . ($_SERVER['REQUEST_URI'] ?? 'N/A'));
+
+// 1. TÁCH DỮ LIỆU VÀ TÍNH TOÁN HASH
+$vnp_SecureHash = $_GET['vnp_SecureHash'] ?? '';
 $inputData = array();
 foreach ($_GET as $key => $value) {
     if (substr($key, 0, 4) == "vnp_") {
@@ -12,42 +24,187 @@ foreach ($_GET as $key => $value) {
 }
 unset($inputData['vnp_SecureHash']);
 ksort($inputData);
-$i = 0;
+
 $hashData = "";
 foreach ($inputData as $key => $value) {
-    if ($i == 1) {
-        $hashData = $hashData . '&' . urlencode($key) . "=" . urlencode($value);
-    } else {
-        $hashData = urlencode($key) . "=" . urlencode($value);
-        $i = 1;
-    }
+    $hashData .= urlencode($key) . "=" . urlencode($value) . '&';
 }
+$hashData = rtrim($hashData, '&');
 
 $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
-if ($secureHash == $vnp_SecureHash) {
-    if ($_GET['vnp_ResponseCode'] == '00') {
-        $user_id = $_SESSION['user_id'];
-        $stmt = $conn->prepare("SELECT order_id FROM orders WHERE user_id = ? AND status = 'pending' ORDER BY order_date DESC LIMIT 1");
-        $stmt->execute([$user_id]);
-        $order_id = $stmt->fetchColumn();
-        $stmt2 = $conn->prepare("SELECT phone FROM users WHERE user_id = ?");
-        $stmt2->execute([$user_id]);
-        $phone = $stmt2->fetchColumn();
-        // Số tiền thanh toán (VNPay trả về nhân 100)
-        $amount = $_GET['vnp_Amount'] / 100;
-        $stmt3 = $conn->prepare("INSERT INTO payments (order_id, payment_method, amount) VALUES (?, 'online', ?)");
-        $stmt3->execute([$order_id, $amount]);
-        $stmt4 = $conn->prepare("UPDATE orders SET status = 'in_progress' WHERE order_id = ?");
-        $stmt4->execute([$order_id]);
-        header('Location: ../FE/index-login.html?payment=success&phone=' . urlencode($phone));
-        exit;
+// Extract order_id from vnp_TxnRef
+// vnp_TxnRef format: {order_id}{timestamp}
+// Example: order_id=123, time=1739123456 -> "1231739123456"
+// We need to extract order_id by finding where timestamp starts (last 10 digits)
+$vnp_TxnRef = $_GET['vnp_TxnRef'] ?? '';
+$vnp_OrderInfo = $_GET['vnp_OrderInfo'] ?? '';
+
+error_log("vnp_TxnRef: " . $vnp_TxnRef);
+error_log("vnp_OrderInfo: " . $vnp_OrderInfo);
+
+// Try to extract order_id from vnp_OrderInfo first (more reliable)
+// Format: "Thanh toan don hang ID: 123"
+$order_id_from_vnpay_ref = null;
+if (preg_match('/ID:\s*(\d+)/', $vnp_OrderInfo, $matches)) {
+    $order_id_from_vnpay_ref = (int)$matches[1];
+    error_log("Extracted order_id from vnp_OrderInfo: " . $order_id_from_vnpay_ref);
+} else {
+    // Fallback: extract from vnp_TxnRef
+    // Remove last 10 digits (timestamp) to get order_id
+    if (strlen($vnp_TxnRef) > 10) {
+        $order_id_from_vnpay_ref = (int)substr($vnp_TxnRef, 0, -10);
+        error_log("Extracted order_id from vnp_TxnRef: " . $order_id_from_vnpay_ref);
     } else {
-        header('Location: ../FE/index-login.html?payment=failed');
+        error_log("ERROR: Cannot extract order_id from vnp_TxnRef. Length: " . strlen($vnp_TxnRef));
+    }
+}
+
+$amount = ($_GET['vnp_Amount'] ?? 0) / 100;
+$response_code = $_GET['vnp_ResponseCode'] ?? '99';
+
+error_log("Amount: " . $amount);
+error_log("Response Code: " . $response_code);
+error_log("Secure Hash Match: " . ($secureHash == $vnp_SecureHash ? "YES" : "NO"));
+error_log("Calculated Hash: " . $secureHash);
+error_log("Received Hash: " . $vnp_SecureHash);
+
+if ($secureHash == $vnp_SecureHash) {
+    error_log("Hash verification: SUCCESS");
+    
+    if ($response_code == '00') {
+        error_log("Payment response code: 00 (SUCCESS)");
+        
+        if (!$order_id_from_vnpay_ref) {
+            error_log("ERROR: Cannot extract order_id. Redirecting to app with error.");
+            header('Location: ' . $app_redirect_url . '?payment=failed&error=invalid_order_id');
+            exit;
+        }
+        
+        // THANH TOÁN THÀNH CÔNG
+        error_log("Processing payment for order_id: " . $order_id_from_vnpay_ref);
+        
+        $conn->begin_transaction();
+        try {
+            // Kiểm tra order có tồn tại không
+            $sql_check_order = "SELECT order_id, table_id, order_status FROM ORDERS WHERE order_id = ?";
+            $stmt_check = $conn->prepare($sql_check_order);
+            $stmt_check->bind_param("i", $order_id_from_vnpay_ref);
+            $stmt_check->execute();
+            $order_result = $stmt_check->get_result();
+            
+            if ($order_result->num_rows == 0) {
+                throw new Exception("Order not found: " . $order_id_from_vnpay_ref);
+            }
+            
+            $order_data = $order_result->fetch_assoc();
+            $table_id = $order_data['table_id'];
+            $current_status = $order_data['order_status'];
+            
+            error_log("Order found. Current status: " . $current_status . ", Table ID: " . $table_id);
+            
+            // Kiểm tra nếu đã thanh toán rồi thì không cập nhật nữa
+            if ($current_status === 'HoanThanh') {
+                error_log("Order already paid. Skipping update.");
+                $conn->rollback();
+            } else {
+                // Cập nhật trạng thái ORDER (BƯỚC 1)
+                $sql_update_order = "UPDATE ORDERS SET order_status = 'HoanThanh', order_updated_at = NOW() WHERE order_id = ?";
+                $stmt_update_order = $conn->prepare($sql_update_order);
+                $stmt_update_order->bind_param("i", $order_id_from_vnpay_ref);
+                
+                if (!$stmt_update_order->execute()) {
+                    throw new Exception("Failed to update order status: " . $stmt_update_order->error);
+                }
+                
+                $affected_rows = $stmt_update_order->affected_rows;
+                error_log("Order status updated. Affected rows: " . $affected_rows);
+                $stmt_update_order->close();
+
+                // Ghi nhận giao dịch vào bảng PAYMENTS (BƯỚC 2)
+                $payment_method = 'ChuyenKhoan';
+                $cashier_id = 0; // System/Auto
+                
+                $sql_payment = "INSERT INTO PAYMENTS (order_id, user_id, payment_method, payment_amount_paid) VALUES (?, ?, ?, ?)";
+                $stmt_payment = $conn->prepare($sql_payment);
+                $stmt_payment->bind_param("iids", $order_id_from_vnpay_ref, $cashier_id, $payment_method, $amount);
+                
+                if (!$stmt_payment->execute()) {
+                    throw new Exception("Failed to insert payment record: " . $stmt_payment->error);
+                }
+                
+                error_log("Payment record inserted successfully");
+                $stmt_payment->close();
+
+                // Cập nhật trạng thái Bàn về 'Trong' (BƯỚC 3)
+                $sql_update_table = "UPDATE TABLES SET status = 'Trong' WHERE table_id = ?";
+                $stmt_update_table = $conn->prepare($sql_update_table);
+                $stmt_update_table->bind_param("i", $table_id);
+                
+                if (!$stmt_update_table->execute()) {
+                    throw new Exception("Failed to update table status: " . $stmt_update_table->error);
+                }
+                
+                error_log("Table status updated to 'Trong'");
+                $stmt_update_table->close();
+            }
+            
+            $stmt_check->close();
+            $conn->commit();
+            error_log("Transaction committed successfully");
+            
+            $redirect_query = http_build_query([
+                'payment' => 'success',
+                'order_id' => $order_id_from_vnpay_ref
+            ]);
+            
+            error_log("Redirecting to app: " . $app_redirect_url . '?' . $redirect_query);
+            // CHUYỂN HƯỚNG VỀ ỨNG DỤNG DI ĐỘNG/WEB
+            header('Location: ' . $app_redirect_url . '?' . $redirect_query);
+            exit;
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            error_log("ERROR in transaction: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            
+            // LỖI XỬ LÝ (VD: CSDL): Vẫn phải thông báo lỗi cho người dùng
+            $redirect_query = http_build_query([
+                'payment' => 'failed',
+                'order_id' => $order_id_from_vnpay_ref,
+                'error' => urlencode($e->getMessage())
+            ]);
+            header('Location: ' . $app_redirect_url . '?' . $redirect_query);
+            exit;
+        }
+
+    } else {
+        // THANH TOÁN THẤT BẠI (Mã VNPAY khác 00)
+        error_log("Payment response code: " . $response_code . " (FAILED)");
+        $redirect_query = http_build_query([
+            'payment' => 'failed',
+            'response_code' => $response_code
+        ]);
+        if ($order_id_from_vnpay_ref) {
+            $redirect_query .= '&order_id=' . $order_id_from_vnpay_ref;
+        }
+        header('Location: ' . $app_redirect_url . '?' . $redirect_query);
         exit;
     }
 } else {
-    header('Location: ../FE/index-login.html?payment=invalid');
+    // LỖI CHỮ KÝ
+    error_log("ERROR: Hash verification FAILED");
+    error_log("Expected: " . $secureHash);
+    error_log("Received: " . $vnp_SecureHash);
+    
+    $redirect_query = http_build_query([
+        'payment' => 'invalid',
+        'error' => 'hash_mismatch'
+    ]);
+    if ($order_id_from_vnpay_ref) {
+        $redirect_query .= '&order_id=' . $order_id_from_vnpay_ref;
+    }
+    header('Location: ' . $app_redirect_url . '?' . $redirect_query);
     exit;
 }
-?> 
+?>

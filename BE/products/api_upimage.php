@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $file = $_FILES['image'];
     
-    $upload_dir = __DIR__ . '/assets/products/'; 
+    $upload_dir = dirname(__DIR__) . '/assets/products/';
     
     if (!is_dir($upload_dir)) {
         mkdir($upload_dir, 0777, true);

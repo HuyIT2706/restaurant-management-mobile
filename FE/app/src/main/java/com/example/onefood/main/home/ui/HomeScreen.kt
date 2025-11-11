@@ -44,29 +44,30 @@ fun HomeScreen(navController: NavController, role: String = "QuanLy") {
         HomeFeature("Đơn hàng", R.drawable.ic_order, BeigeLight, "order_list_route"),
         HomeFeature("Nhân viên", R.drawable.ic_staff, BeigeLight, "user_management_route", "QuanLy"),
         HomeFeature("Thống kê", R.drawable.ic_stats, BeigeLight, "statistics_route"),
-        HomeFeature("Khuyến mại", R.drawable.ic_promo, BeigeLight, "promotion_management_route", "QuanLy"),
-        HomeFeature("Doanh thu", R.drawable.ic_stats, BeigeLight, "revenue_list_route", "QuanLy")
+        HomeFeature("Khuyến mại", R.drawable.ic_promo, BeigeLight, "promotion_management_route", "QuanLy")
     )
 
-    val filteredFeatures = features.filter {
-        it.requiredRole == null || role == "QuanLy"
+    val filteredFeatures = features.filter { feature ->
+        feature.requiredRole == null || role == "QuanLy"
     }
 
     Scaffold(
         topBar = { TopBarContent() },
-        bottomBar = { BottomTabBar(navController, homeRole = role) },
-        modifier = Modifier
-            .fillMaxSize()
-            .then(Modifier.background(Color.White))
+    bottomBar = { BottomTabBar(navController, homeRole = role) },
+        modifier = Modifier.fillMaxSize().background(Color.White)
     ) { paddingValues ->
+
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             SearchBarComponent()
+
             Spacer(modifier = Modifier.height(24.dp))
+
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(4.dp),
@@ -76,7 +77,7 @@ fun HomeScreen(navController: NavController, role: String = "QuanLy") {
             ) {
                 items(filteredFeatures) { feature ->
                     FeatureCard(feature = feature) {
-                        navController.navigate(feature.route)
+                        navController.navigate(feature.route) // Điều hướng khi click
                     }
                 }
             }
@@ -93,15 +94,19 @@ fun TopBarContent() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        Text(
+            text = "ONE FOOD",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = RedPrimary
+        )
+
         Image(
             painter = painterResource(id = R.drawable.ic_logo_cart),
             contentDescription = "App Logo",
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier
+                .size(40.dp)
         )
-        Text("ONE FOOD", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
-        IconButton(onClick = { /* mở menu */ }) {
-            Icon(painterResource(id = R.drawable.ic_menu_hamburguer), contentDescription = "Menu")
-        }
     }
 }
 
@@ -109,15 +114,16 @@ fun TopBarContent() {
 fun SearchBarComponent() {
     OutlinedTextField(
         value = "",
-        onValueChange = {},
+        onValueChange = { /* Xử lý tìm kiếm */ },
         placeholder = { Text("Tìm kiếm") },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search Icon") },
         shape = RoundedCornerShape(24.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Color.Transparent,
             unfocusedBorderColor = Color.Transparent,
             unfocusedContainerColor = Color(0xFFF0F0F0),
-            focusedContainerColor = Color(0xFFF0F0F0)
+            focusedContainerColor = Color(0xFFF0F0F0),
+            cursorColor = RedPrimary
         ),
         modifier = Modifier.fillMaxWidth().height(56.dp)
     )
@@ -129,7 +135,9 @@ fun FeatureCard(feature: HomeFeature, onClick: () -> Unit) {
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = feature.backgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.height(130.dp).clickable(onClick = onClick)
+        modifier = Modifier
+            .height(130.dp)
+            .clickable(onClick = onClick)
     ) {
         Column(
             modifier = Modifier
@@ -145,15 +153,16 @@ fun FeatureCard(feature: HomeFeature, onClick: () -> Unit) {
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(feature.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(text = feature.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     OneFoodTheme {
-        HomeScreen(rememberNavController(), "QuanLy")
+    HomeScreen(navController = rememberNavController(), role = "QuanLy")
     }
 }
