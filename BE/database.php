@@ -9,7 +9,7 @@ $dotenv->safeLoad();
 $servername = $_ENV['DB_HOST'] ?? 'localhost';
 $username = $_ENV['DB_USER'] ?? 'root';
 $dbname = $_ENV['DB_NAME'] ?? 'quanlinhahangmb';
-$password = $_ENV['DB_PASS'] ?? '111111'; 
+$password = $_ENV['DB_PASS'] ?? ''; 
 
 // 2. THIẾT LẬP KẾT NỐI (Tạo biến $conn)
 $conn = new mysqli($servername, $username, $password, $dbname); 
