@@ -31,6 +31,114 @@ class OrderApiService(
         }
     }
     
+    suspend fun createVnPayUrl(orderId: Int, token: String, bankCode: String = "NCB"): String {
+        try {
+            val responseText = try {
+                val response = client.post("$baseUrl/payments/api_vnpay_create.php") {
+                    headers {
+                        append("Authorization", "Bearer $token")
+                        append("Accept", "application/json")
+                    }
+                    contentType(ContentType.Application.Json)
+                    val body = buildJsonObject {
+                        put("order_id", orderId)
+                        if (bankCode.isNotBlank()) {
+                            put("bank_code", bankCode)
+                        }
+                    }
+                    setBody(TextContent(body.toString(), ContentType.Application.Json))
+                }
+                val statusCode = response.status.value
+                val bodyText = response.body<String>()
+                if (statusCode >= 400) {
+                    val jsonString = extractJsonFromResponse(bodyText)
+                    val json = Json.parseToJsonElement(jsonString).jsonObject
+                    val message = json["message"]?.jsonPrimitive?.content
+                    throw Exception(
+                        when (statusCode) {
+                            403 -> message ?: "Bạn không có quyền khởi tạo thanh toán."
+                            401 -> message ?: "Không có quyền thực hiện thao tác này. Vui lòng đăng nhập lại."
+                            400 -> message ?: "Thiếu thông tin đơn hàng."
+                            500 -> message ?: "Lỗi hệ thống. Vui lòng thử lại sau."
+                            else -> message ?: "Lỗi kết nối: HTTP $statusCode"
+                        }
+                    )
+                }
+                bodyText
+            } catch (e: Exception) {
+                throw e
+            }
+
+            val jsonString = extractJsonFromResponse(responseText)
+            val json = Json.parseToJsonElement(jsonString).jsonObject
+            val success = json["success"]?.jsonPrimitive?.booleanOrNull ?: false
+            if (!success) {
+                val message = json["message"]?.jsonPrimitive?.content ?: "Không thể tạo thanh toán VNPay."
+                throw Exception(message)
+            }
+            val url = json["vnpay_url"]?.jsonPrimitive?.content
+            if (url.isNullOrBlank()) throw Exception("Không nhận được URL VNPay từ server.")
+            return url
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host") == true -> "Không thể kết nối đến server."
+                e.message?.contains("Connection refused") == true -> "Server từ chối kết nối."
+                else -> e.message ?: "Lỗi tạo thanh toán VNPay."
+            }
+            throw Exception(errorMessage, e)
+        }
+    }
+
+    suspend fun payOrderWithCash(orderId: Int, token: String): String {
+        try {
+            val responseText = try {
+                val response = client.post("$baseUrl/payments/api_payment_cash.php") {
+                    headers {
+                        append("Authorization", "Bearer $token")
+                        append("Accept", "application/json")
+                    }
+                    contentType(ContentType.Application.Json)
+                    setBody(TextContent("""{"order_id": $orderId}""", ContentType.Application.Json))
+                }
+                val statusCode = response.status.value
+                val bodyText = response.body<String>()
+                if (statusCode >= 400) {
+                    val jsonString = extractJsonFromResponse(bodyText)
+                    val json = Json.parseToJsonElement(jsonString).jsonObject
+                    val message = json["message"]?.jsonPrimitive?.content
+                    throw Exception(
+                        when (statusCode) {
+                            403 -> message ?: "Bạn không có quyền thực hiện chức năng thanh toán."
+                            401 -> message ?: "Không có quyền thực hiện thao tác này. Vui lòng đăng nhập lại."
+                            400 -> message ?: "Thiếu thông tin đơn hàng."
+                            500 -> message ?: "Lỗi hệ thống. Vui lòng thử lại sau."
+                            else -> message ?: "Lỗi kết nối: HTTP $statusCode"
+                        }
+                    )
+                }
+                bodyText
+            } catch (e: Exception) {
+                throw e
+            }
+
+            val jsonString = extractJsonFromResponse(responseText)
+            val json = Json.parseToJsonElement(jsonString).jsonObject
+            val success = json["success"]?.jsonPrimitive?.booleanOrNull ?: false
+            if (!success) {
+                val message = json["message"]?.jsonPrimitive?.content ?: "Thanh toán tiền mặt thất bại."
+                throw Exception(message)
+            }
+            return json["message"]?.jsonPrimitive?.content ?: "Thanh toán tiền mặt thành công."
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host") == true -> "Không thể kết nối đến server."
+                e.message?.contains("Connection refused") == true -> "Server từ chối kết nối."
+                else -> e.message ?: "Không thể thanh toán bằng tiền mặt."
+            }
+            throw Exception(errorMessage, e)
+        }
+    }
+    
     suspend fun createOrder(request: CreateOrderRequest, token: String): CreateOrderResponse {
         try {
             // Build JSON string manually using buildJsonObject

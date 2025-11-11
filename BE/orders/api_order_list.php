@@ -8,12 +8,15 @@ $user_data = verifyToken();
 $sql = "
     SELECT 
         o.order_id,
-        CONCAT(u.user_firstname, ' ',u.user_lastname ) AS full_name,
+        CONCAT(u.user_firstname, ' ', u.user_lastname) AS full_name,
         DATE_FORMAT(o.order_date, '%d/%m/%Y %H:%i') AS order_date_formatted,
-        COALESCE(p.payment_method, 'Chưa thanh toán') AS payment_method
+        COALESCE(p.payment_method, 'Chưa thanh toán') AS payment_method,
+        o.table_id,
+        t.table_name
     FROM orders o
     JOIN users u ON o.user_id = u.user_id
     LEFT JOIN payments p ON o.order_id = p.order_id
+    LEFT JOIN tables t ON o.table_id = t.table_id
     ORDER BY o.order_date DESC
 ";
 

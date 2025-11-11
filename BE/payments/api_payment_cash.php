@@ -8,7 +8,7 @@ ini_set('display_errors', 1);
 $user_data = verifyToken();
 
 // CHỈ CÓ NHÂN VIÊN THU NGÂN MỚI CÓ QUYỀN THANH TOÁN
-if ($user_data->user_role !== 'ThuNgan') {
+if ($user_data->user_role !== 'ThuNgan' && $user_data->user_role !== 'QuanLy') {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thực hiện chức năng thanh toán.']);
     exit();

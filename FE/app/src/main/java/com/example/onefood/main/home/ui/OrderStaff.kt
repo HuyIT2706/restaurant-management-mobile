@@ -76,6 +76,7 @@ fun OrderStaff(
                     val query = debouncedSearchQuery.trim().lowercase()
                     order.id.lowercase().contains(query) ||
                     order.staffName.lowercase().contains(query) ||
+                    order.tableLabel.lowercase().contains(query) ||
                     order.orderTime.lowercase().contains(query) ||
                     order.paymentMethod?.lowercase()?.contains(query) == true
                 }
@@ -413,15 +414,17 @@ fun OrderListItemCard(
             // Staff Information
             Text(
                 text = "Nhân viên: ${order.staffName}",
-                fontSize = 14.sp,
+                fontSize = 18.sp,
                 color = Color.Black
             )
             
-            // Order Date
+            val tableLabel = order.tableLabel.ifEmpty { "Chưa xác định" }
+            
+            // Table Information
             Text(
-                text = "Thời gian: ${order.orderTime}",
-                fontSize = 14.sp,
-                color = Color.Gray
+                text = "Bàn: $tableLabel",
+                fontSize = 18.sp,
+                color = Color.Black
             )
             
             // Payment Method

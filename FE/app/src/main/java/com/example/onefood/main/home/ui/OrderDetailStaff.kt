@@ -31,6 +31,8 @@ import com.example.onefood.main.home.viewmodel.OrderDetailViewModel
 import com.example.onefood.ui.theme.OneFoodTheme
 import com.example.onefood.ui.theme.RedPrimary
 import com.example.onefood.util.formatPrice
+import android.widget.Toast
+import androidx.compose.material3.HorizontalDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,9 +46,28 @@ fun OrderDetailStaff(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     
-    // Load order detail when screen is first displayed
+    // Determine if order is paid based on order status or payment method
+    // Default button shows "Chưa thanh toán" until nhân viên xác nhận thủ công
+    var currentPaymentStatus by remember { mutableStateOf(false) }
+    
+    // Load order detail when screen is first displayed or when orderId changes
+    // This will also trigger when screen is recreated after navigation from deep link
     LaunchedEffect(orderId) {
         viewModel.loadOrderDetail(context, orderId)
+    }
+    
+    // Handle payment status toggle
+    val onTogglePaymentStatus = {
+        currentPaymentStatus = !currentPaymentStatus
+        // TODO: Call API to update payment status on server
+        // For now, just update local state
+        if (currentPaymentStatus) {
+            Toast.makeText(context, "Đơn hàng đã được đánh dấu là đã thanh toán", Toast.LENGTH_SHORT).show()
+            // Refresh order detail to get updated status
+            viewModel.refreshOrderDetail(context, orderId)
+        } else {
+            Toast.makeText(context, "Đơn hàng đã được đánh dấu là chưa thanh toán", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Scaffold(
@@ -155,10 +176,10 @@ fun OrderDetailStaff(
                     
                     // Order Information Section
                     item {
-                        Divider(
-                            color = Color(0xFFE0E0E0),
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
                             thickness = 1.dp,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            color = Color(0xFFE0E0E0)
                         )
                     }
                     
@@ -172,7 +193,7 @@ fun OrderDetailStaff(
                     }
                     
                     item {
-                        OrderInfoRow("Mã đơn hàng", orderDetail!!.id)
+                        OrderInfoRow("Mã đơn hàng", "DH " + orderDetail!!.id)
                     }
                     
                     item {
@@ -203,12 +224,12 @@ fun OrderDetailStaff(
                         ) {
                             Text(
                                 text = "Trạng thái",
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 color = Color.Black
                             )
                             Text(
                                 text = orderDetail!!.status,
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = when (orderDetail!!.status.lowercase()) {
                                     "hoàn thành", "completed" -> Color(0xFF4CAF50)
@@ -221,10 +242,10 @@ fun OrderDetailStaff(
                     
                     // Table Number Section
                     item {
-                        Divider(
-                            color = Color(0xFFE0E0E0),
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
                             thickness = 1.dp,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            color = Color(0xFFE0E0E0)
                         )
                     }
                     
@@ -258,23 +279,29 @@ fun OrderDetailStaff(
                     
                     // Total Amount Section
                     item {
-                        Divider(
-                            color = Color(0xFFE0E0E0),
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
                             thickness = 1.dp,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            color = Color(0xFFE0E0E0)
                         )
                     }
                     
+                    // Thành tiền Section (above buttons)
                     item {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
                                 Text(
                                     text = "Thành tiền",
-                                    fontSize = 14.sp,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
                                     color = Color.Black
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -283,6 +310,56 @@ fun OrderDetailStaff(
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = RedPrimary
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Bottom Action Bar: Two buttons in a row
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Left: Thanh toán button (navigate to payment screen)
+                            Button(
+                                onClick = {
+                                    navController.navigate("payment_route/${orderDetail!!.id}")
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "Thanh toán",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            
+                            // Right: Chưa thanh toán / Đã thanh toán button (toggle payment status)
+                            Button(
+                                onClick = onTogglePaymentStatus,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (currentPaymentStatus) Color(0xFF4CAF50) else RedPrimary
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = if (currentPaymentStatus) "Đã thanh toán" else "Chưa thanh toán",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
                                 )
                             }
                         }
@@ -393,12 +470,12 @@ fun OrderInfoRow(label: String, value: String) {
     ) {
         Text(
             text = label,
-            fontSize = 14.sp,
+            fontSize = 16.sp,
             color = Color.Black
         )
         Text(
             text = value,
-            fontSize = 14.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             color = Color.Black
         )

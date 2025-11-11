@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vnp_TxnRef = $order_id . time(); // Mã tham chiếu duy nhất
     $vnp_OrderInfo = 'Thanh toan don hang ID: ' . $order_id;
     $vnp_OrderType = 'billpayment';
-    $vnp_Amount = $order_totalamount * 100; // VNPAY nhận số tiền nhân 100
+    $vnp_Amount = intval($order_totalamount); // VNPAY nhận số tiền tính bằng VND
     $vnp_Locale = 'vn';
     $vnp_IpAddr = $_SERVER['REMOTE_ADDR'];
     $vnp_CreateDate = date('YmdHis');
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inputData = array(
         "vnp_Version" => "2.1.0",
         "vnp_TmnCode" => $vnp_TmnCode,
-        "vnp_Amount" => $vnp_Amount,
+        "vnp_Amount" => $vnp_Amount * 100,
         "vnp_Command" => "pay",
         "vnp_CreateDate" => $vnp_CreateDate,
         "vnp_CurrCode" => "VND",
@@ -69,22 +69,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ksort($inputData);
     $query = "";
     $hashdata = "";
-    $i = 0;
     foreach ($inputData as $key => $value) {
-        $hashdata .= ($i == 1 ? '&' : '') . urlencode($key) . "=" . urlencode($value);
         $query .= urlencode($key) . "=" . urlencode($value) . '&';
-        $i = 1;
+        $hashdata .= urlencode($key) . "=" . urlencode($value) . '&';
     }
-
+    
+    // Tính hash từ query string (không có vnp_SecureHash và không có dấu & cuối)
+    $hashdata = rtrim($hashdata, '&');
     $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnp_HashSecret);
     $vnp_Url = $vnp_Url . "?" . $query . 'vnp_SecureHash=' . $vnpSecureHash;
+    
+    error_log("VNPay Return URL: " . $vnp_Returnurl);
+    error_log("VNPay Order Info: " . $vnp_OrderInfo);
+    error_log("VNPay TxnRef: " . $vnp_TxnRef);
+
+    // DEBUG: Ghi log thông tin
+    error_log("TMN_CODE: " . $vnp_TmnCode);
+    error_log("HASH_SECRET: " . $vnp_HashSecret);
+    error_log("Hash Data: " . $hashdata);
+    error_log("Secure Hash: " . $vnpSecureHash);
+    error_log("Full URL: " . $vnp_Url);
 
     // Trả về URL VNPAY cho Frontend (Compose)
     http_response_code(200);
     echo json_encode([
         'success' => true,
         'message' => 'Tạo URL VNPAY thành công',
-        'vnpay_url' => $vnp_Url
+        'vnpay_url' => $vnp_Url,
+        'debug' => [
+            'tmn_code' => $vnp_TmnCode,
+            'hash_data' => $hashdata,
+            'secure_hash' => $vnpSecureHash
+        ]
     ]);
 
 } else {

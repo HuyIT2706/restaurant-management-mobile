@@ -28,11 +28,77 @@ import com.example.onefood.main.home.ui.RevenueListScreen
 import com.example.onefood.main.home.ui.RevenueDetailScreen
 import com.example.onefood.main.home.ui.CartScreen
 import com.example.onefood.main.home.ui.TableOrderDetailScreen
+import com.example.onefood.main.home.ui.PaymentScreen
 
+
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 
 @Composable
-fun RoutingApp(startDestination: String = "login") {
+fun RoutingApp(
+	startDestination: String = "login",
+	deepLinkPaymentStatus: String? = null,
+	deepLinkOrderId: String? = null
+) {
 	val navController = rememberNavController()
+	val context = LocalContext.current
+
+	// Handle deep link from VNPay return
+	LaunchedEffect(deepLinkPaymentStatus, deepLinkOrderId) {
+		if (!deepLinkPaymentStatus.isNullOrBlank() && !deepLinkOrderId.isNullOrBlank()) {
+			when (deepLinkPaymentStatus) {
+				"success" -> {
+					Toast.makeText(context, "Thanh toán thành công", Toast.LENGTH_SHORT).show()
+					val orderDetailRoute = "order_detail_staff_route/$deepLinkOrderId"
+					kotlinx.coroutines.delay(500) // Small delay to ensure toast is visible
+					
+					// Navigate to order detail screen
+					// Pop backstack to order detail route (inclusive = true) to remove it if it exists
+					// Then navigate again to recreate the screen and trigger data reload
+					try {
+						// Pop to order detail route with inclusive = true to remove it from backstack
+						navController.popBackStack(orderDetailRoute, inclusive = true)
+						kotlinx.coroutines.delay(200)
+					} catch (e: Exception) {
+						// Route doesn't exist in backstack, that's okay
+					}
+					
+					// Now navigate to order detail - this will recreate the screen and trigger LaunchedEffect
+					navController.navigate(orderDetailRoute) {
+						// Pop up to order list but keep it
+						popUpTo("order_list_route") { 
+							inclusive = false
+							saveState = false
+						}
+						// Force recreation by not using launchSingleTop
+						launchSingleTop = false
+						restoreState = false
+					}
+				}
+				"failed" -> {
+					Toast.makeText(context, "Thanh toán thất bại", Toast.LENGTH_LONG).show()
+					// Stay on payment screen or navigate back to order detail
+					val orderDetailRoute = "order_detail_staff_route/$deepLinkOrderId"
+					kotlinx.coroutines.delay(300)
+					navController.navigate(orderDetailRoute) {
+						popUpTo("order_list_route") { inclusive = false }
+						launchSingleTop = true
+					}
+				}
+				"invalid" -> {
+					Toast.makeText(context, "Xác thực thanh toán không hợp lệ", Toast.LENGTH_LONG).show()
+					// Stay on payment screen or navigate back to order detail
+					val orderDetailRoute = "order_detail_staff_route/$deepLinkOrderId"
+					kotlinx.coroutines.delay(300)
+					navController.navigate(orderDetailRoute) {
+						popUpTo("order_list_route") { inclusive = false }
+						launchSingleTop = true
+					}
+				}
+			}
+		}
+	}
 
 	NavHost(navController = navController, startDestination = startDestination) {
 		composable("login") {
@@ -73,6 +139,14 @@ fun RoutingApp(startDestination: String = "login") {
 		) { backStackEntry ->
 			val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
 			OrderDetailStaff(navController = navController, orderId = orderId)
+		}
+
+		composable(
+			route = "payment_route/{orderId}",
+			arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+		) { backStackEntry ->
+			val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+			PaymentScreen(navController = navController, orderId = orderId)
 		}
 
 		composable("add_product_route") {

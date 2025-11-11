@@ -15,7 +15,13 @@ data class OrderListItem(
     val orderDateFormatted: String? = null,
     
     @SerialName("payment_method")
-    val paymentMethod: String? = null
+    val paymentMethod: String? = null,
+    
+    @SerialName("table_name")
+    val tableName: String? = null,
+    
+    @SerialName("table_id")
+    val tableId: String? = null
 ) {
     // Helper properties
     val id: String
@@ -26,6 +32,13 @@ data class OrderListItem(
     
     val orderTime: String
         get() = orderDateFormatted ?: ""
+    
+    val tableLabel: String
+        get() = when {
+            !tableName.isNullOrBlank() -> tableName
+            !tableId.isNullOrBlank() -> "Bàn $tableId"
+            else -> ""
+        }
     
     // Status: "Hoàn thành" nếu có payment_method và không phải "Chưa thanh toán"
     // "Tiếp nhận" nếu payment_method là "Chưa thanh toán" hoặc null
