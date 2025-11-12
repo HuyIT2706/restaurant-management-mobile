@@ -8,67 +8,59 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.onefood.R
+import android.widget.Toast
+import com.example.onefood.main.home.viewmodel.PromotionViewModel
 import com.example.onefood.ui.theme.RedPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PromotionEditScreen(
     navController: NavController,
-    promotionId: Int
+    promotionId: Int,
+    viewModel: PromotionViewModel = hiltViewModel()
 ) {
-    // Sample data - trong thực tế sẽ lấy từ ViewModel/Repository dựa trên promotionId
-    // Để đơn giản, sử dụng sample data giống như trong PromotionListScreen
-    val samplePromotions = remember {
-        listOf(
-            com.example.onefood.data.model.PromotionItem(1, "FLASH10", "01/09/2025", "15/09/2025", true, "10%", 5, "PhầnTrăm", "3.000.000 đ", "Giảm 10% cho đơn hàng FLASH10"),
-            com.example.onefood.data.model.PromotionItem(2, "SALE50K", "10/09/2025", "20/09/2025", true, "50.000 đ", 10, "SốTiền", "1.000.000 đ", "Giảm 50.000 đ cho đơn hàng trên 1 triệu"),
-            com.example.onefood.data.model.PromotionItem(3, "WEEKEND20", "15/09/2025", "30/09/2025", false, "20%", 3, "PhầnTrăm", "2.000.000 đ", "Giảm 20% cuối tuần")
-        )
+    val context = LocalContext.current
+
+    // Lấy promotion từ ViewModel
+    val promotions by viewModel.promotions.collectAsState()
+    val promotion = remember(promotions, promotionId) {
+        promotions.find { it.id == promotionId }
     }
-    
-    // Tìm promotion theo ID
-    val promotion = remember(promotionId) {
-        samplePromotions.find { it.id == promotionId } ?: samplePromotions.first()
-    }
-    
-    var code by remember { mutableStateOf(promotion.code) }
-    var quantity by remember { mutableStateOf(promotion.quantity.toString()) }
-    var discountType by remember { mutableStateOf(promotion.discountType) }
+
+    var code by remember { mutableStateOf(promotion?.code ?: "") }
+    var quantity by remember { mutableStateOf(promotion?.quantity?.toString() ?: "") }
+    var discountType by remember { mutableStateOf(promotion?.discountType ?: "PhanTram") }
     var showDiscountTypeDropdown by remember { mutableStateOf(false) }
-    var startDate by remember { mutableStateOf(promotion.startDate) }
-    var endDate by remember { mutableStateOf(promotion.endDate) }
-    var status by remember { 
-        mutableStateOf(
-            if (promotion.status) "Hoạt động" else "Tạm dừng"
-        )
-    }
-    var showStatusDropdown by remember { mutableStateOf(false) }
-    
-    // Extract discount value from discount string (e.g., "10%" -> "10" or "50000 đ" -> "50000")
+    var startDate by remember { mutableStateOf(promotion?.startDate ?: "") }
+    var endDate by remember { mutableStateOf(promotion?.endDate ?: "") }
     var discountValue by remember {
         mutableStateOf(
-            promotion.discount.replace("%", "").replace(" đ", "").replace(".", "").trim()
+            if (promotion != null) promotion.discount.replace("%", "").replace(" đ", "").replace(".", "").trim() else ""
         )
     }
-    var minOrderValue by remember { 
+    var minOrderValue by remember {
         mutableStateOf(
-            promotion.minOrderValue.replace(" đ", "").replace(".", "").trim()
+            if (promotion != null) promotion.minOrderValue.replace(" đ", "").replace(".", "").trim() else ""
         )
     }
-    var description by remember { mutableStateOf(promotion.description) }
+    var description by remember { mutableStateOf(promotion?.description ?: "") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var showStatusDropdown by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("Hoạt động") }
 
     Dialog(
         onDismissRequest = { navController.popBackStack() },
@@ -167,7 +159,7 @@ fun PromotionEditScreen(
                             onExpandedChange = { showDiscountTypeDropdown = !showDiscountTypeDropdown }
                         ) {
                             OutlinedTextField(
-                                value = if (discountType == "PhầnTrăm") "Phần trăm" else "Số tiền",
+                                value = if (discountType == "PhanTram") "Phần trăm" else "Số tiền",
                                 onValueChange = { },
                                 label = { Text("Loại giảm giá") },
                                 readOnly = true,
@@ -175,7 +167,7 @@ fun PromotionEditScreen(
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDiscountTypeDropdown)
                                 },
                                 modifier = Modifier
-                                    .menuAnchor()
+                                    .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
                                     .fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp)
                             )
@@ -183,9 +175,9 @@ fun PromotionEditScreen(
                                 expanded = showDiscountTypeDropdown,
                                 onDismissRequest = { showDiscountTypeDropdown = false }
                             ) {
-                                listOf("PhầnTrăm", "SốTiền").forEach { type ->
+                                listOf("PhanTram", "SoTien").forEach { type ->
                                     DropdownMenuItem(
-                                        text = { Text(if (type == "PhầnTrăm") "Phần trăm" else "Số tiền") },
+                                        text = { Text(if (type == "PhanTram") "Phần trăm" else "Số tiền") },
                                         onClick = {
                                             discountType = type
                                             showDiscountTypeDropdown = false
@@ -267,7 +259,7 @@ fun PromotionEditScreen(
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = showStatusDropdown)
                                 },
                                 modifier = Modifier
-                                    .menuAnchor()
+                                    .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
                                     .fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp)
                             )
@@ -310,28 +302,70 @@ fun PromotionEditScreen(
                         // Submit Button
                         Button(
                             onClick = {
-                                // Handle update promotion
-                                navController.popBackStack()
+                                if (promotion == null) {
+                                    Toast.makeText(context, "Không tìm thấy khuyến mãi", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                if (discountValue.isBlank() || startDate.isBlank() || endDate.isBlank()) {
+                                    Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                isSubmitting = true
+                                val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+                                val token = prefs.getString("jwt_token", null)
+                                if (token == null) {
+                                    Toast.makeText(context, "Vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show()
+                                    isSubmitting = false
+                                    return@Button
+                                }
+                                val promoValue = discountValue.toDoubleOrNull() ?: 0.0
+                                val promoQuantity = quantity.toIntOrNull() ?: 1
+                                val promoMinOrder = minOrderValue.toDoubleOrNull() ?: 0.0
+                                val promoActive = if (promotion.status) 1 else 0
+
+                                viewModel.updatePromotion(
+                                    token,
+                                    promotion.id,
+                                    code,
+                                    discountType,
+                                    promoValue,
+                                    promoQuantity,
+                                    description,
+                                    promoMinOrder,
+                                    startDate,
+                                    endDate,
+                                    promoActive
+                                ) { success ->
+                                    isSubmitting = false
+                                    if (success) {
+                                        Toast.makeText(context, "Cập nhật khuyến mãi thành công", Toast.LENGTH_SHORT).show()
+                                        navController.popBackStack()
+                                    } else {
+                                        Toast.makeText(context, "Lỗi khi cập nhật khuyến mãi", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             },
+                            enabled = !isSubmitting,
                             colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp)
                         ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_update),
-                                contentDescription = "Cập nhật",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Cập nhật khuyến mãi",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            if (isSubmitting) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    text = "Cập nhật khuyến mãi",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }

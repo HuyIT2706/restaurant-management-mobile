@@ -2,12 +2,10 @@ package com.example.onefood.main.home.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -24,74 +22,137 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.example.onefood.R
+import com.example.onefood.main.home.viewmodel.StatisticsViewModel
 import com.example.onefood.ui.theme.RedPrimary
+import com.example.onefood.core.components.BottomTabBar
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import java.text.NumberFormat
 import java.util.*
+import com.example.onefood.main.home.model.RevenueItem
+import coil.compose.AsyncImage
 
-data class RevenueItem(
-    val id: Int,
-    val name: String,
-    val category: String,
-    val quantity: Int,
-    val revenue: Int,
-    val bestSeller: Boolean,
-    val imageRes: Int
-)
+
+@Composable
+fun RevenueScreenTopBar() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 50.dp, start = 15.dp, end = 15.dp, bottom = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "ONE FOOD",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = RedPrimary
+        )
+
+        Image(
+            painter = painterResource(id = R.drawable.ic_logo_cart),
+            contentDescription = "Logo ứng dụng",
+            modifier = Modifier.size(40.dp)
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RevenueListScreen(navController: NavController) {
+fun RevenueListScreen(
+    navController: NavController,
+    viewModel: StatisticsViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
 
-    val items = remember {
-        listOf(
-            RevenueItem(1, "Lẩu 4 ngăn", "Lẩu", 4, 5_000_000, true, R.drawable.img_sp1),
-            RevenueItem(2, "Sườn heo nướng mật ong", "Nướng", 2, 320_000, false, R.drawable.img_sp1),
-            RevenueItem(3, "Cá hồi xông khói", "Món thêm", 4, 240_000, false, R.drawable.img_sp1)
-        )
+    // Load revenue on first composition
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+        val token = prefs.getString("jwt_token", null)
+        if (token != null) {
+            viewModel.loadRevenue(token)
+        } else {
+            Toast.makeText(context, "Vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    val filteredItems = items.filter { 
+    val revenueJson by viewModel.revenueJson.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+
+    // Parse JSON to RevenueItems
+    val items = remember(revenueJson) {
+        val jsonString = revenueJson
+        if (jsonString.isNullOrBlank()) {
+            emptyList()
+        } else {
+            try {
+                val json = Json.parseToJsonElement(jsonString).jsonObject
+                val itemsArray = json["items"]?.jsonArray ?: return@remember emptyList()
+                itemsArray.mapNotNull { elem ->
+                    try {
+                        val obj = elem.jsonObject
+                        RevenueItem(
+                            id = obj["product_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                            name = obj["product_name"]?.jsonPrimitive?.content ?: "",
+                            category = "Sản phẩm",
+                            quantity = obj["total_quantity"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                            revenue = obj["total_revenue"]?.jsonPrimitive?.content
+                                ?.replace(".", "")
+                                ?.replace("đ", "")
+                                ?.replace(" ", "")
+                                ?.toIntOrNull() ?: 0,
+                            bestSeller = false,
+                            imageUrl = obj["image_url"]?.jsonPrimitive?.content // ✅ lấy ảnh động từ API
+                        )
+
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    val filteredItems = items.filter {
         it.name.contains(searchQuery, ignoreCase = true) ||
-        it.category.contains(searchQuery, ignoreCase = true)
+                it.category.contains(searchQuery, ignoreCase = true)
     }
 
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Thống kê", fontWeight = FontWeight.Medium) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Quay lại",
-                            tint = Color.Black
-                        )
-                    }
-                }
-            )
-        },
-        modifier = Modifier.fillMaxSize().background(Color.White)
+        topBar = { RevenueScreenTopBar() },
+        bottomBar = { BottomTabBar(navController) },
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Search bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Tìm kiếm") },
-                leadingIcon = { 
+                leadingIcon = {
                     Icon(
-                        Icons.Default.Search, 
-                        contentDescription = "Tìm",
+                        Icons.Default.Search,
+                        contentDescription = "Tìm kiếm sản phẩm",
                         tint = Color.Gray
-                    ) 
+                    )
                 },
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -109,17 +170,43 @@ fun RevenueListScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Revenue List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(filteredItems) { item ->
-                    RevenueListItem(
-                        item = item,
-                        onClick = {
-                            navController.navigate("revenue_detail/${item.id}")
-                        }
+            // Loading
+            if (loading && items.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = RedPrimary)
+                }
+            }
+            // Empty
+            else if (filteredItems.isEmpty() && !loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (searchQuery.isNotEmpty()) "Không tìm thấy sản phẩm" else "Không có dữ liệu doanh thu",
+                        fontSize = 16.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
                     )
+                }
+            }
+            // List
+            else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(filteredItems) { item ->
+                        RevenueListItem(
+                            item = item,
+                            onClick = {
+                                navController.navigate("revenue_detail/${item.id}")
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -128,7 +215,8 @@ fun RevenueListScreen(navController: NavController) {
 
 @Composable
 fun RevenueListItem(item: RevenueItem, onClick: () -> Unit) {
-    val formattedRevenue = NumberFormat.getInstance(Locale("vi", "VN")).format(item.revenue)
+    val viLocale = Locale.Builder().setLanguage("vi").setRegion("VN").build()
+    val formattedRevenue = NumberFormat.getInstance(viLocale).format(item.revenue)
 
     Card(
         modifier = Modifier
@@ -146,8 +234,8 @@ fun RevenueListItem(item: RevenueItem, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Product Image
-            Image(
-                painter = painterResource(id = item.imageRes),
+            AsyncImage(
+                model = item.imageUrl ?: R.drawable.img_sp1,
                 contentDescription = item.name,
                 modifier = Modifier
                     .size(64.dp)
@@ -155,6 +243,7 @@ fun RevenueListItem(item: RevenueItem, onClick: () -> Unit) {
                     .background(Color(0xFFF0F0F0)),
                 contentScale = ContentScale.Crop
             )
+
 
             // Product Info
             Column(
@@ -209,186 +298,315 @@ fun RevenueListItem(item: RevenueItem, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RevenueDetailScreen(id: Int, navController: NavController) {
-    var selectedDate by remember { mutableStateOf("29-09-2025") }
-    val showDatePicker = remember { mutableStateOf(false) }
+fun RevenueDetailScreen(
+    id: Int,
+    navController: NavController,
+    viewModel: StatisticsViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
 
-    val dish = RevenueItem(id, "Lẩu 4 ngăn", "Lẩu", 4, 5_000_000, true, R.drawable.img_sp1)
-    val orders = listOf(
-        Triple("DH49", "1", "22:09:26"),
-        Triple("DH44", "1", "20:59:55"),
-        Triple("DH43", "1", "15:03:12"),
-        Triple("DH42", "1", "06:19:20")
-    )
+    // Load chi tiết món
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+        val token = prefs.getString("jwt_token", null)
+        if (token != null) {
+            viewModel.loadProductDetails(id, token)
+        }
+    }
+
+    val detailJson by viewModel.productDetailsJson.collectAsState()
+    val loading by viewModel.loading.collectAsState()
+
+    val viLocale = Locale.Builder().setLanguage("vi").setRegion("VN").build()
+
+    // Parse dữ liệu chi tiết món
+    val dish = remember(detailJson) {
+        val jsonString = detailJson
+        if (jsonString.isNullOrBlank()) {
+            RevenueItem(id, "Đang tải...", "Sản phẩm", 0, 0, false, R.drawable.img_sp1)
+        } else {
+            try {
+                val json = Json.parseToJsonElement(jsonString).jsonObject
+                RevenueItem(
+                    id = json["product_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: id,
+                    name = json["product_name"]?.jsonPrimitive?.content ?: "N/A",
+                    category = "Sản phẩm",
+                    quantity = json["total_quantity"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                    revenue = json["total_revenue"]?.jsonPrimitive?.content
+                        ?.replace(".", "")
+                        ?.replace("đ", "")
+                        ?.replace(" ", "")
+                        ?.toIntOrNull() ?: 0,
+                    bestSeller = (json["is_best_seller"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0) == 1,
+                    imageUrl = json["image_url"]?.jsonPrimitive?.content
+
+                )
+            } catch (_: Exception) {
+                RevenueItem(id, "Lỗi tải dữ liệu", "Sản phẩm", 0, 0, false, R.drawable.img_sp1)
+            }
+        }
+    }
+
+    // Parse danh sách đơn hàng
+    val orders = remember(detailJson) {
+        try {
+            val jsonString = detailJson
+            if (jsonString.isNullOrBlank()) {
+                emptyList()
+            } else {
+                val json = Json.parseToJsonElement(jsonString).jsonObject
+                val ordersArray = json["orders"]?.jsonArray ?: return@remember emptyList()
+                ordersArray.mapNotNull { elem ->
+                    val obj = elem.jsonObject
+                    mapOf(
+                        "order_id" to (obj["order_id"]?.jsonPrimitive?.content ?: ""),
+                        "quantity" to (obj["quantity"]?.jsonPrimitive?.content ?: "0"),
+                        "price" to (obj["price"]?.jsonPrimitive?.content ?: "0 đ"),
+                        "timestamp" to (obj["timestamp"]?.jsonPrimitive?.content ?: "")
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize().background(Color.White)
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-        ) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 50.dp, start = 16.dp, end = 16.dp, bottom = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { navController.popBackStack() },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Quay lại",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Chi tiết doanh thu",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = RedPrimary
                     )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Chi tiết doanh thu",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Quay lại",
+                            tint = Color.Black
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White
                 )
-            }
-
-            LazyColumn(
+            )
+        }
+    ) { paddingValues ->
+        if (loading) {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
             ) {
-                item {
-                    // Product Image
-                    Image(
-                        painter = painterResource(id = dish.imageRes),
-                        contentDescription = dish.name,
+                CircularProgressIndicator(color = RedPrimary)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White)
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Ảnh món
+                AsyncImage(
+                    model = dish.imageUrl ?: R.drawable.img_sp1,
+                    contentDescription = dish.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop
+                )
+
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Tên món
+                Text(
+                    text = dish.name,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+// Bảng chi tiết đơn hàng
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-
-                item {
-                    Column {
-                        Text(
-                            text = "Chi tiết món #$id",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                        Text(
-                            text = dish.name,
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                    }
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "Ngày: $selectedDate",
-                            fontSize = 14.sp,
-                            color = Color.Black
-                        )
-                        IconButton(onClick = { showDatePicker.value = true }) {
-                            Icon(
-                                Icons.Default.FavoriteBorder,
-                                contentDescription = "Chọn ngày",
-                                tint = Color.Black
-                            )
-                        }
-                    }
-                }
 
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
+                        // ====== Header ======
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Header Row
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Mã đơn", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("SL", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Giá", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Thời gian", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            }
-                            HorizontalDivider(color = Color(0xFFE0E0E0))
+                            Text(
+                                text = "Mã đơn",
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1.2f),
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "SL",
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(0.6f),
+                                fontSize = 14.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Text(
+                                text = "Giá",
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                                fontSize = 14.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                            Text(
+                                text = "Thời gian",
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1.5f),
+                                fontSize = 14.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                        }
 
-                            // Order Items
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
+
+                        // ====== Dữ liệu ======
+                        if (orders.isEmpty()) {
+                            Text(
+                                text = "Không có dữ liệu đơn hàng",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = Color.Gray
+                            )
+                        } else {
                             orders.forEach { order ->
                                 Row(
-                                    Modifier
+                                    modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(order.first, fontSize = 14.sp, color = Color.Black)
-                                    Text(order.second, fontSize = 14.sp, color = Color.Black)
-                                    Text("430.000 đ", fontSize = 14.sp, color = Color.Black)
-                                    Text(order.third, fontSize = 14.sp, color = Color.Black)
+                                    Text(
+                                        text = order["order_id"] ?: "",
+                                        fontSize = 14.sp,
+                                        modifier = Modifier.weight(1.2f)
+                                    )
+                                    Text(
+                                        text = order["quantity"] ?: "",
+                                        fontSize = 14.sp,
+                                        modifier = Modifier.weight(0.6f),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                    Text(
+                                        text = order["price"] ?: "",
+                                        fontSize = 14.sp,
+                                        modifier = Modifier.weight(1f),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                    )
+
+                                    // 🕒 Cột thời gian tách 2 dòng: Giờ trên, Ngày dưới
+                                    val timeText = order["timestamp"] ?: ""
+                                    val parts = timeText.split(" ")
+                                    val date = parts.getOrNull(0) ?: ""
+                                    val time = parts.getOrNull(1) ?: ""
+
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1.5f)
+                                            .padding(vertical = 2.dp),
+                                        horizontalAlignment = Alignment.End
+                                    ) {
+                                        Text(
+                                            text = time,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.Black
+                                        )
+                                        Text(
+                                            text = date,
+                                            fontSize = 13.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
                                 }
                                 HorizontalDivider(color = Color(0xFFE0E0E0))
                             }
+                        }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                            // Total
-                            Column {
-                                Text(
-                                    text = "Tổng SL: 4",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black
-                                )
-                                Text(
-                                    text = "Tổng tiền: 1.660.000 VND",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = RedPrimary
-                                )
-                            }
+                        // ====== Tổng kết ======
+                        HorizontalDivider(color = Color(0xFFE0E0E0))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Tổng SL:",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1.2f),
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "${dish.quantity}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(0.6f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "Tổng tiền:",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "${NumberFormat.getInstance(viLocale).format(dish.revenue)} đ",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1.5f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                color = RedPrimary
+                            )
                         }
                     }
                 }
             }
         }
     }
-
-    if (showDatePicker.value) {
-        AlertDialog(
-            onDismissRequest = { showDatePicker.value = false },
-            confirmButton = {
-                TextButton(onClick = { showDatePicker.value = false }) {
-                    Text("OK", color = RedPrimary)
-                }
-            },
-            title = { Text("Chọn ngày", fontWeight = FontWeight.Bold) },
-            text = { Text("Tính năng chọn ngày sẽ được thêm sau.") }
-        )
-    }
 }
+

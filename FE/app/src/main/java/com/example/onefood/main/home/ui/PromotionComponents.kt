@@ -84,8 +84,8 @@ fun SearchBarWithFilter(
 
 @Composable
 fun PromotionListItem(
-    promo: PromotionItem, 
-    onEditClick: () -> Unit, 
+    promo: PromotionItem,
+    onEditClick: () -> Unit,
     onDelete: () -> Unit,
     onPromotionClick: () -> Unit = {}
 ) {
@@ -169,7 +169,7 @@ fun PromotionListItem(
                         modifier = Modifier.size(18.dp)
                     )
                 }
-                
+
                 // Delete Button
                 Box(
                     modifier = Modifier

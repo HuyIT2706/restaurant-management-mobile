@@ -21,12 +21,13 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import javax.inject.Singleton
+import com.example.onefood.data.api.StatisticsApiService
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "http://10.35.4.241/BeMobie/restaurant-management-mobile/BE/"
+    private const val BASE_URL = "http://10.237.138.241/BeMobie/restaurant-management-mobile/BE/"
 
     // Ktor HttpClient for Product API
     @Provides
@@ -57,6 +58,20 @@ object NetworkModule {
         return OrderApiService(client, BASE_URL)
     }
 
+    @Provides
+    @Singleton
+    fun providePromotionApiService(client: HttpClient): com.example.onefood.data.api.PromotionApiService {
+        return com.example.onefood.data.api.PromotionApiService(client, BASE_URL)
+    }
+
+    @Provides
+    @Singleton
+    fun provideStatisticsApiService(client: HttpClient): StatisticsApiService {
+        return StatisticsApiService(client, BASE_URL)
+    }
+
+
+
     // Retrofit for Table API (keep existing)
     @Provides
     @Singleton
@@ -80,7 +95,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl("http://10.237.138.241/BeMobie/restaurant-management-mobile/BE/")
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()

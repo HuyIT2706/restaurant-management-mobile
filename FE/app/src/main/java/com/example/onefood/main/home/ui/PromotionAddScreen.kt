@@ -8,35 +8,41 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.onefood.R
+import android.widget.Toast
+import com.example.onefood.main.home.viewmodel.PromotionViewModel
 import com.example.onefood.ui.theme.RedPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PromotionAddScreen(navController: NavController) {
+fun PromotionAddScreen(
+    navController: NavController,
+    viewModel: PromotionViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
     var code by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
-    var discountType by remember { mutableStateOf("PhầnTrăm") }
+    var discountType by remember { mutableStateOf("PhanTram") }
     var showDiscountTypeDropdown by remember { mutableStateOf(false) }
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("Hoạt động") }
-    var showStatusDropdown by remember { mutableStateOf(false) }
     var discountValue by remember { mutableStateOf("") }
     var minOrderValue by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = { navController.popBackStack() },
@@ -136,7 +142,7 @@ fun PromotionAddScreen(navController: NavController) {
                             onExpandedChange = { showDiscountTypeDropdown = !showDiscountTypeDropdown }
                         ) {
                             OutlinedTextField(
-                                value = if (discountType == "PhầnTrăm") "Phần trăm" else "Số tiền",
+                                value = if (discountType == "PhanTram") "Phần trăm" else "Số tiền",
                                 onValueChange = { },
                                 label = { Text("Loại giảm giá") },
                                 readOnly = true,
@@ -144,7 +150,7 @@ fun PromotionAddScreen(navController: NavController) {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDiscountTypeDropdown)
                                 },
                                 modifier = Modifier
-                                    .menuAnchor()
+                                    .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
                                     .fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp)
                             )
@@ -152,9 +158,9 @@ fun PromotionAddScreen(navController: NavController) {
                                 expanded = showDiscountTypeDropdown,
                                 onDismissRequest = { showDiscountTypeDropdown = false }
                             ) {
-                                listOf("PhầnTrăm", "SốTiền").forEach { type ->
+                                listOf("PhanTram", "SoTien").forEach { type ->
                                     DropdownMenuItem(
-                                        text = { Text(if (type == "PhầnTrăm") "Phần trăm" else "Số tiền") },
+                                        text = { Text(if (type == "PhanTram") "Phần trăm" else "Số tiền") },
                                         onClick = {
                                             discountType = type
                                             showDiscountTypeDropdown = false
@@ -226,42 +232,6 @@ fun PromotionAddScreen(navController: NavController) {
                     }
 
                     item {
-                        // Trạng thái
-                        ExposedDropdownMenuBox(
-                            expanded = showStatusDropdown,
-                            onExpandedChange = { showStatusDropdown = !showStatusDropdown }
-                        ) {
-                            OutlinedTextField(
-                                value = status,
-                                onValueChange = { },
-                                label = { Text("Trạng thái") },
-                                readOnly = true,
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showStatusDropdown)
-                                },
-                                modifier = Modifier
-                                    .menuAnchor()
-                                    .fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            ExposedDropdownMenu(
-                                expanded = showStatusDropdown,
-                                onDismissRequest = { showStatusDropdown = false }
-                            ) {
-                                listOf("Hoạt động", "Tạm dừng", "Kết thúc").forEach { s ->
-                                    DropdownMenuItem(
-                                        text = { Text(s) },
-                                        onClick = {
-                                            status = s
-                                            showStatusDropdown = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item {
                         // Mô tả
                         OutlinedTextField(
                             value = description,
@@ -284,21 +254,63 @@ fun PromotionAddScreen(navController: NavController) {
                         // Submit Button
                         Button(
                             onClick = {
-                                // Handle add promotion
-                                navController.popBackStack()
+                                if (code.isBlank() || discountValue.isBlank() || startDate.isBlank() || endDate.isBlank()) {
+                                    Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                isSubmitting = true
+                                val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+                                val token = prefs.getString("jwt_token", null)
+                                if (token == null) {
+                                    Toast.makeText(context, "Vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show()
+                                    isSubmitting = false
+                                    return@Button
+                                }
+                                val promoValue = discountValue.toDoubleOrNull() ?: 0.0
+                                val promoQuantity = quantity.toIntOrNull() ?: 1
+                                val promoMinOrder = minOrderValue.toDoubleOrNull() ?: 0.0
+
+                                viewModel.addPromotion(
+                                    token,
+                                    code,
+                                    discountType,
+                                    promoValue,
+                                    promoQuantity,
+                                    description,
+                                    promoMinOrder,
+                                    startDate,
+                                    endDate
+                                ) { newId ->
+                                    isSubmitting = false
+                                    if (newId != null) {
+                                        Toast.makeText(context, "Thêm khuyến mãi thành công", Toast.LENGTH_SHORT).show()
+                                        navController.popBackStack()
+                                    } else {
+                                        Toast.makeText(context, "Lỗi khi thêm khuyến mãi", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             },
+                            enabled = !isSubmitting,
                             colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp)
                         ) {
-                            Text(
-                                text = "Thêm khuyến mãi",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            if (isSubmitting) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text(
+                                    text = "Thêm khuyến mãi",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
                 }

@@ -28,7 +28,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"   
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -41,12 +41,12 @@ android {
     buildFeatures {
         compose = true
     }
-    
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),        
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
@@ -69,6 +69,7 @@ configurations.named("kapt") {
 }
 
 dependencies {
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Material Icons Extended (dùng cho FilterList, Refresh, ArrowBack, v.v.)
     implementation("androidx.compose.material:material-icons-extended")
@@ -81,12 +82,12 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
-    
+
     // Retrofit for networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-moshi:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
-    
+
     // Moshi for JSON parsing
     implementation("com.squareup.moshi:moshi-kotlin:1.14.0")
     implementation(libs.engage.core)
@@ -115,7 +116,7 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
     implementation("io.ktor:ktor-client-logging:2.3.7")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")    
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     implementation("io.coil-kt:coil-compose:2.5.0")
     // Navigation for Jetpack Compose
     implementation("androidx.navigation:navigation-compose:2.5.3")

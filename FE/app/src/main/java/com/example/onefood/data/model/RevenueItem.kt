@@ -1,6 +1,4 @@
-package com.example.onefood.data.models
-
-import androidx.annotation.DrawableRes
+package com.example.onefood.main.home.model
 
 data class RevenueItem(
     val id: Int,
@@ -9,5 +7,6 @@ data class RevenueItem(
     val quantity: Int,
     val revenue: Int,
     val bestSeller: Boolean,
-    @DrawableRes val imageRes: Int
+    val imageRes: Int? = null, // Giữ lại cho fallback ảnh cục bộ
+    val imageUrl: String? = null // ➕ Thêm dòng này
 )
