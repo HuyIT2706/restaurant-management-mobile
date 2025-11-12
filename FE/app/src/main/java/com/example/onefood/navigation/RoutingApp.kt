@@ -15,7 +15,7 @@ import com.example.onefood.main.home.ui.UserScreen
 import com.example.onefood.main.home.ui.EditUserScreen
 import com.example.onefood.main.home.ui.ProductScreen
 import com.example.onefood.main.home.ui.AddProductScreen
-import com.example.onefood.main.home.ui.EmployeesStaticListScreen
+import com.example.onefood.main.home.ui.EmployeesScreen
 import com.example.onefood.main.home.ui.UpdateProductScreen
 import com.example.onefood.main.home.ui.ProductDetailViewScreen
 import com.example.onefood.main.home.ui.OrderStaff
@@ -34,6 +34,7 @@ import com.example.onefood.main.home.ui.PaymentScreen
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import android.content.Context
 
 @Composable
 fun RoutingApp(
@@ -312,7 +313,10 @@ fun RoutingApp(
 		}
 		// 👥 Quản lý nhân viên
 		composable("user_management_route") {
-			EmployeesStaticListScreen(
+			val token = context.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
+				.getString("jwt_token", "") ?: ""
+			EmployeesScreen(
+				token = token,
 				onBackPress = {
 					navController.popBackStack()
 				}

@@ -3,6 +3,8 @@ package com.example.onefood.di
 import com.example.onefood.data.api.ProductApiService
 import com.example.onefood.data.api.TableApiService
 import com.example.onefood.data.api.OrderApiService
+import com.example.onefood.data.api.UserApiService
+import com.example.onefood.data.repository.UserRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -55,6 +57,18 @@ object NetworkModule {
     @Singleton
     fun provideOrderApiService(client: HttpClient): OrderApiService {
         return OrderApiService(client, BASE_URL)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserApiService(client: HttpClient): UserApiService {
+        return UserApiService(client, BASE_URL)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserRepository(userApiService: UserApiService): UserRepository {
+        return UserRepository(userApiService)
     }
 
     // Retrofit for Table API (keep existing)
