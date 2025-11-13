@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // BƯỚC 1: TẠO BẢN GHI MỚI TRONG ORDERS
         // =========================================================================
         // Bàn phải có trạng thái 'Dang phuc vu' TỪ API CHỌN BÀN TRƯỚC ĐÓ.
-        $sql_order = "INSERT INTO ORDERS (table_id, user_id, order_status) VALUES (?, ?, 'TiepNhan')";
+        $sql_order = "INSERT INTO orders (table_id, user_id, order_status) VALUES (?, ?, 'TiepNhan')";
         $stmt_order = $conn->prepare($sql_order);
         $stmt_order->bind_param("ii", $table_id, $user_id); 
         $stmt_order->execute();
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // =========================================================================
         // BƯỚC 2: CHÈN TẤT CẢ MÓN VÀO ORDER_DETAILS
         // =========================================================================
-        $sql_detail = "INSERT INTO ORDER_DETAILS (order_id, product_id, order_detail_quantity, order_detail_price, order_detail_notes) VALUES (?, ?, ?, ?, ?)";
+        $sql_detail = "INSERT INTO order_details (order_id, product_id, order_detail_quantity, order_detail_price, order_detail_notes) VALUES (?, ?, ?, ?, ?)";
         $stmt_detail = $conn->prepare($sql_detail);
         
         foreach ($items as $item) {
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // =========================================================================
             // BƯỚC 2.5: TÍNH VÀ CẬP NHẬT TỔNG TIỀN
             // =========================================================================
-            $sql_total = "SELECT SUM(order_detail_quantity * order_detail_price) AS total FROM ORDER_DETAILS WHERE order_id = ?";
+            $sql_total = "SELECT SUM(order_detail_quantity * order_detail_price) AS total FROM order_details WHERE order_id = ?";
             $stmt_total = $conn->prepare($sql_total);
             $stmt_total->bind_param("i", $order_id);
             $stmt_total->execute();
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $order_total_amount = $total_row['total'] ?? 0.00;
             $stmt_total->close();
 
-            $sql_update_total = "UPDATE ORDERS SET order_totalamount = ? WHERE order_id = ?";
+            $sql_update_total = "UPDATE orders SET order_totalamount = ? WHERE order_id = ?";
             $stmt_update_total = $conn->prepare($sql_update_total);
             $stmt_update_total->bind_param("di", $order_total_amount, $order_id);
             $stmt_update_total->execute();

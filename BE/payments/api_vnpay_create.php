@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 1. Lấy order_totalamount từ CSDL (đảm bảo tính chính xác)
     if ($order_id) {
-        $sql = "SELECT order_totalamount FROM ORDERS WHERE order_id = ?";
+        $sql = "SELECT order_totalamount FROM orders WHERE order_id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $order_id);
         $stmt->execute();

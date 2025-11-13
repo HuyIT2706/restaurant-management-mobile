@@ -21,6 +21,9 @@ import com.example.onefood.R
 import com.example.onefood.data.model.PromotionItem
 import com.example.onefood.ui.theme.RedPrimary
 
+private fun safeQuantityString(quantity: Int?): String =
+    (quantity ?: 0).toString()
+
 @Composable
 fun SearchBarWithFilter(
     searchQuery: String,
@@ -84,8 +87,8 @@ fun SearchBarWithFilter(
 
 @Composable
 fun PromotionListItem(
-    promo: PromotionItem, 
-    onEditClick: () -> Unit, 
+    promo: PromotionItem,
+    onEditClick: () -> Unit,
     onDelete: () -> Unit,
     onPromotionClick: () -> Unit = {}
 ) {
@@ -106,23 +109,25 @@ fun PromotionListItem(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = promo.code,
+                    text = promo.code ?: "Không rõ mã",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "SL còn: ${promo.quantity}",
+                    text = "SL còn: ${safeQuantityString(promo.quantity)}",
                     fontSize = 14.sp,
                     color = Color.Black
                 )
+                // ✅ Hiển thị ngày đã định dạng dd-MM-yyyy
                 Text(
-                    text = "Từ ${promo.startDate} - ${promo.endDate}",
+                    text = "Từ ${formatPromotionDate(promo.startDate)} - ${formatPromotionDate(promo.endDate)}",
                     fontSize = 13.sp,
                     color = Color.Gray
                 )
             }
+
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -130,34 +135,27 @@ fun PromotionListItem(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (promo.status) Color(0xFF4CAF50) else Color.Red)
+                        .background(promotionStatusColor(promo))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = if (promo.status) "Hoạt động" else "Không hoạt động",
+                        text = promotionStatusLabel(promo),
                         color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
-                Text(
-                    text = promo.discount,
-                    color = Color(0xFFFF9800),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+
             }
+
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Edit Button
+                // Nút sửa
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(
-                            Color.White,
-                            shape = RoundedCornerShape(6.dp)
-                        )
+                        .background(Color.White, shape = RoundedCornerShape(6.dp))
                         .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(6.dp))
                         .clickable { onEditClick() },
                     contentAlignment = Alignment.Center
@@ -169,15 +167,12 @@ fun PromotionListItem(
                         modifier = Modifier.size(18.dp)
                     )
                 }
-                
-                // Delete Button
+
+                // Nút xóa
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(
-                            RedPrimary,
-                            shape = RoundedCornerShape(6.dp)
-                        )
+                        .background(RedPrimary, shape = RoundedCornerShape(6.dp))
                         .clickable(onClick = onDelete),
                     contentAlignment = Alignment.Center
                 ) {

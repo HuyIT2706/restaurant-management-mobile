@@ -29,11 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 CONCAT(u_order.user_firstname, ' ', u_order.user_lastname) AS order_user_name,
                 CONCAT(u_cash.user_firstname, ' ', u_cash.user_lastname) AS cash_user_name
                 
-            FROM ORDERS o
-            JOIN TABLES t ON o.table_id = t.table_id
-            JOIN USERS u_order ON o.user_id = u_order.user_id
-            -- Thêm cột cashier_id vào bảng ORDERS nếu chưa có, để join với Thu ngân
-            LEFT JOIN USERS u_cash ON o.cashier_id = u_cash.user_id 
+            FROM orders o
+            JOIN tables t ON o.table_id = t.table_id
+            JOIN users u_order ON o.user_id = u_order.user_id
+            -- Thêm cột cashier_id vào bảng orders nếu chưa có, để join với Thu ngân
+            LEFT JOIN users u_cash ON o.cashier_id = u_cash.user_id 
             WHERE o.order_id = ?
         ";
         $stmt_order = $conn->prepare($sql_order);
@@ -54,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             SELECT 
                 od.order_detail_quantity, od.order_detail_price, od.order_detail_notes, 
                 p.product_name, p.image_url
-            FROM ORDER_DETAILS od
-            JOIN PRODUCTS p ON od.product_id = p.product_id
+            FROM order_details od
+            JOIN products p ON od.product_id = p.product_id
             WHERE od.order_id = ?
         ";
         $stmt_details = $conn->prepare($sql_details);

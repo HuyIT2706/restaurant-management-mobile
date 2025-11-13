@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import io.ktor.client.call.body
 import kotlinx.serialization.json.Json
+import android.util.Base64
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -44,7 +45,7 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             _loginState.value = LoginState.Loading
             try {
-                val baseUrl = "http://10.0.2.2/BeMobile/BE/login.php"
+                val baseUrl = "https://onefood.id.vn/BE/login.php"
 
                 val respText = client.post(baseUrl) {
                     contentType(ContentType.Application.Json)
@@ -61,6 +62,50 @@ class LoginViewModel : ViewModel() {
                     token?.let { t ->
                         val prefs = context.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
                         prefs.edit().putString("jwt_token", t).apply()
+                        // Try to decode JWT payload to save some user info locally (name/phone/user_id/role)
+                        try {
+                            val parts = t.split('.')
+                            if (parts.size >= 2) {
+                                val payload = parts[1]
+                                // Decode base64 URL-safe payload. Use android.util.Base64 to support lower API levels.
+                                val decodedBytes = try {
+                                    Base64.decode(payload, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+                                } catch (ex: IllegalArgumentException) {
+                                    // Fallback in case of unexpected padding/format
+                                    Base64.decode(payload, Base64.DEFAULT)
+                                }
+                                val payloadJson = String(decodedBytes, Charsets.UTF_8)
+                                val obj = Json.parseToJsonElement(payloadJson).jsonObject
+                                val data = obj["data"]?.jsonObject
+                                // Safely extract fields as strings and convert where needed
+                                val userId = try {
+                                    data?.get("user_id")?.jsonPrimitive?.content?.toIntOrNull()
+                                } catch (e: Exception) {
+                                    null
+                                }
+                                val userRole = try {
+                                    data?.get("user_role")?.jsonPrimitive?.content
+                                } catch (e: Exception) {
+                                    null
+                                }
+                                val phoneFromToken = try {
+                                    data?.get("phone")?.jsonPrimitive?.content
+                                } catch (e: Exception) {
+                                    null
+                                }
+                                val nameFromToken = try {
+                                    data?.get("name")?.jsonPrimitive?.content
+                                } catch (e: Exception) {
+                                    null
+                                }
+                                userId?.let { prefs.edit().putInt("user_id", it).apply() }
+                                userRole?.let { prefs.edit().putString("user_role", it).apply() }
+                                phoneFromToken?.let { prefs.edit().putString("user_phone", it).apply() }
+                                nameFromToken?.let { prefs.edit().putString("user_name", it).apply() }
+                            }
+                        } catch (e: Exception) {
+                            // ignore decode errors
+                        }
                     }
                     _loginState.value = LoginState.Success(message ?: "Đăng nhập thành công", role ?: "")
                 } else {

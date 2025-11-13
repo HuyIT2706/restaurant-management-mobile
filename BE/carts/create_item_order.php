@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             // 1a. KIỂM TRA MÓN ĐÃ TỒN TẠI TRONG ĐƠN HÀNG CHƯA
-            $sql_check = "SELECT order_detail_id, order_detail_quantity FROM ORDER_DETAILS WHERE order_id = ? AND product_id = ? LIMIT 1";
+            $sql_check = "SELECT order_detail_id, order_detail_quantity FROM order_details WHERE order_id = ? AND product_id = ? LIMIT 1";
             $stmt_check = $conn->prepare($sql_check);
             $stmt_check->bind_param("ii", $order_id, $product_id);
             $stmt_check->execute();
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($existing_item) {
                 $new_quantity = $existing_item['order_detail_quantity'] + $quantity_added;
-                $sql_update = "UPDATE ORDER_DETAILS SET order_detail_quantity = ?, order_detail_notes = ? WHERE order_detail_id = ?";
+                $sql_update = "UPDATE order_details SET order_detail_quantity = ?, order_detail_notes = ? WHERE order_detail_id = ?";
                 $stmt_update = $conn->prepare($sql_update);
                 $stmt_update->bind_param("isi", $new_quantity, $notes, $existing_item['order_detail_id']);
                 $stmt_update->execute();
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             } else {
         
-                $sql_insert = "INSERT INTO ORDER_DETAILS (order_id, product_id, order_detail_quantity, order_detail_price, order_detail_notes) VALUES (?, ?, ?, ?, ?)";
+                $sql_insert = "INSERT INTO order_details (order_id, product_id, order_detail_quantity, order_detail_price, order_detail_notes) VALUES (?, ?, ?, ?, ?)";
                 $stmt_insert = $conn->prepare($sql_insert);
                 $stmt_insert->bind_param("iiids", $order_id, $product_id, $quantity_added, $price, $notes);
                 $stmt_insert->execute();
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // BƯỚC 2: TÍNH VÀ CẬP NHẬT TỔNG TIỀN
         // =========================================================================
         if ($success) {
-            $sql_total = "SELECT SUM(order_detail_quantity * order_detail_price) AS total FROM ORDER_DETAILS WHERE order_id = ?";
+            $sql_total = "SELECT SUM(order_detail_quantity * order_detail_price) AS total FROM order_details WHERE order_id = ?";
             $stmt_total = $conn->prepare($sql_total);
             $stmt_total->bind_param("i", $order_id);
             $stmt_total->execute();
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $order_total_amount = $total_row['total'] ?? 0.00;
             $stmt_total->close();
 
-            $sql_update_total = "UPDATE ORDERS SET order_totalamount = ? WHERE order_id = ?";
+            $sql_update_total = "UPDATE orders SET order_totalamount = ? WHERE order_id = ?";
             $stmt_update_total = $conn->prepare($sql_update_total);
             $stmt_update_total->bind_param("di", $order_total_amount, $order_id);
             $stmt_update_total->execute();

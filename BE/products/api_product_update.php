@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         exit();
     }
     
-    $sql_category = "SELECT category_id FROM CATEGORIES WHERE category_name = ?";
+    $sql_category = "SELECT category_id FROM categories WHERE category_name = ?";
     $stmt_cat = $conn->prepare($sql_category);
     $stmt_cat->bind_param("s", $category_name);
     $stmt_cat->execute();
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     
     $category_id = $category_row['category_id'];
 
-    $sql = "UPDATE PRODUCTS SET product_name=?, product_description=?, category_id=?, price=?, image_url=?, product_active=? WHERE product_id=?";
+    $sql = "UPDATE products SET product_name=?, product_description=?, category_id=?, price=?, image_url=?, product_active=? WHERE product_id=?";
     $stmt = $conn->prepare($sql);
     
     $stmt->bind_param("ssidsii", $name, $description, $category_id, $price, $image_url, $product_active, $product_id); 

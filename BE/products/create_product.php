@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     
-    $sql_category = "SELECT category_id FROM CATEGORIES WHERE category_name = ?";
+    $sql_category = "SELECT category_id FROM categories WHERE category_name = ?";
     $stmt_cat = $conn->prepare($sql_category);
     $stmt_cat->bind_param("s", $category_name);
     $stmt_cat->execute();
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $category_id = $category_row['category_id'];
 
-    $sql = "INSERT INTO PRODUCTS (product_name, product_description, category_id, price, image_url, product_active) VALUES (?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO products (product_name, product_description, category_id, price, image_url, product_active) VALUES (?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     
     $stmt->bind_param("ssidsi", $name, $description, $category_id, $price, $image_url, $product_active); 

@@ -46,7 +46,6 @@ fun LoginScreen(
         when (val state = loginState) {
             is LoginState.Success -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
-                // Navigate to home and clear login from backstack
                 navController.navigate("home/${state.role}") {
                     popUpTo("login") { inclusive = true }
                 }
@@ -100,7 +99,7 @@ fun LoginScreen(
 
                 OutlinedTextField(
                     value = phone,
-                    onValueChange = { phone = it },
+                    onValueChange = { phone = it.filter { ch -> ch.isDigit() } },
                     label = { Text("Số điện thoại") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = RedPrimary,

@@ -3,7 +3,6 @@ package com.example.onefood.data.api
 import com.example.onefood.data.model.Product
 import com.example.onefood.data.model.UploadImageResponse
 import com.example.onefood.data.model.AddProductResponse
-import com.example.onefood.data.model.AddProductRequest
 import com.example.onefood.data.model.DeleteProductResponse
 import com.example.onefood.data.model.UpdateProductResponse
 import io.ktor.client.HttpClient
@@ -18,7 +17,6 @@ class ProductApiService(
     private val client: HttpClient,
     private val baseUrl: String
 ) {
-    // Helper function to extract JSON from response (handles BOM, whitespace, and extra text)
     private fun extractJsonFromResponse(response: String): String {
         val trimmed = response.trim()
         // Try to find JSON object boundaries

@@ -1,5 +1,6 @@
 package com.example.onefood.navigation
 
+import EmployeesScreen
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -15,7 +16,6 @@ import com.example.onefood.main.home.ui.UserScreen
 import com.example.onefood.main.home.ui.EditUserScreen
 import com.example.onefood.main.home.ui.ProductScreen
 import com.example.onefood.main.home.ui.AddProductScreen
-import com.example.onefood.main.home.ui.EmployeesStaticListScreen
 import com.example.onefood.main.home.ui.UpdateProductScreen
 import com.example.onefood.main.home.ui.ProductDetailViewScreen
 import com.example.onefood.main.home.ui.OrderStaff
@@ -29,11 +29,12 @@ import com.example.onefood.main.home.ui.RevenueDetailScreen
 import com.example.onefood.main.home.ui.CartScreen
 import com.example.onefood.main.home.ui.TableOrderDetailScreen
 import com.example.onefood.main.home.ui.PaymentScreen
-
-
+import android.content.Context
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import android.util.Log
 
 @Composable
 fun RoutingApp(
@@ -44,56 +45,140 @@ fun RoutingApp(
 	val navController = rememberNavController()
 	val context = LocalContext.current
 
+	// Get token and role from SharedPreferences
+	val prefs = remember {
+		try {
+			context.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
+		} catch (e: Exception) {
+			null
+		}
+	}
+	val token = remember(prefs) {
+		prefs?.getString("jwt_token", null) ?: null
+	}
+	val savedRole = remember(prefs) {
+		prefs?.getString("user_role", "QuanLy") ?: "QuanLy"
+	}
+
 	// Handle deep link from VNPay return
 	LaunchedEffect(deepLinkPaymentStatus, deepLinkOrderId) {
 		if (!deepLinkPaymentStatus.isNullOrBlank() && !deepLinkOrderId.isNullOrBlank()) {
+			// Re-read token to ensure we have latest value
+			val currentToken = prefs?.getString("jwt_token", null)
+			val currentRole = prefs?.getString("user_role", "QuanLy") ?: "QuanLy"
+			
+			// If not logged in, can't navigate
+			if (currentToken == null || currentToken.isEmpty()) {
+				Log.d("RoutingApp", "User not logged in, cannot handle deep link")
+				return@LaunchedEffect
+			}
+			
 			when (deepLinkPaymentStatus) {
 				"success" -> {
 					Toast.makeText(context, "Thanh toán thành công", Toast.LENGTH_SHORT).show()
 					val orderDetailRoute = "order_detail_staff_route/$deepLinkOrderId"
-					kotlinx.coroutines.delay(500) // Small delay to ensure toast is visible
+					val homeRoute = "home/$currentRole"
+					kotlinx.coroutines.delay(500)
 					
-					// Navigate to order detail screen
-					// Pop backstack to order detail route (inclusive = true) to remove it if it exists
-					// Then navigate again to recreate the screen and trigger data reload
-					try {
-						// Pop to order detail route with inclusive = true to remove it from backstack
-						navController.popBackStack(orderDetailRoute, inclusive = true)
-						kotlinx.coroutines.delay(200)
-					} catch (e: Exception) {
-						// Route doesn't exist in backstack, that's okay
+					// Get current destination
+					val currentDestination = navController.currentDestination?.route
+					Log.d("RoutingApp", "Current destination: $currentDestination")
+					
+					// Check if we need to build navigation stack
+					val needsStack = currentDestination == "login" || 
+					                 currentDestination == null ||
+					                 (!currentDestination.startsWith("home/") && 
+					                  currentDestination != "order_list_route" &&
+					                  !currentDestination.startsWith("order_detail_staff_route"))
+					
+					if (needsStack) {
+						// Clear stack and navigate to home first
+						navController.navigate(homeRoute) {
+							popUpTo(navController.graph.startDestinationId) { inclusive = true }
+						}
+						kotlinx.coroutines.delay(300)
+						
+						// Navigate to order list
+						navController.navigate("order_list_route") {
+							popUpTo(homeRoute) { inclusive = false }
+						}
+						kotlinx.coroutines.delay(300)
 					}
 					
-					// Now navigate to order detail - this will recreate the screen and trigger LaunchedEffect
+					// Now navigate to order detail
 					navController.navigate(orderDetailRoute) {
-						// Pop up to order list but keep it
 						popUpTo("order_list_route") { 
 							inclusive = false
 							saveState = false
 						}
-						// Force recreation by not using launchSingleTop
 						launchSingleTop = false
 						restoreState = false
 					}
 				}
 				"failed" -> {
 					Toast.makeText(context, "Thanh toán thất bại", Toast.LENGTH_LONG).show()
-					// Stay on payment screen or navigate back to order detail
 					val orderDetailRoute = "order_detail_staff_route/$deepLinkOrderId"
-					kotlinx.coroutines.delay(300)
+					val homeRoute = "home/$currentRole"
+					kotlinx.coroutines.delay(500)
+					
+					val currentDestination = navController.currentDestination?.route
+					val needsStack = currentDestination == "login" || 
+					                 currentDestination == null ||
+					                 (!currentDestination.startsWith("home/") && 
+					                  currentDestination != "order_list_route" &&
+					                  !currentDestination.startsWith("order_detail_staff_route"))
+					
+					if (needsStack) {
+						navController.navigate(homeRoute) {
+							popUpTo(navController.graph.startDestinationId) { inclusive = true }
+						}
+						kotlinx.coroutines.delay(300)
+						navController.navigate("order_list_route") {
+							popUpTo(homeRoute) { inclusive = false }
+						}
+						kotlinx.coroutines.delay(300)
+					}
+					
 					navController.navigate(orderDetailRoute) {
-						popUpTo("order_list_route") { inclusive = false }
-						launchSingleTop = true
+						popUpTo("order_list_route") { 
+							inclusive = false
+							saveState = false
+						}
+						launchSingleTop = false
+						restoreState = false
 					}
 				}
 				"invalid" -> {
 					Toast.makeText(context, "Xác thực thanh toán không hợp lệ", Toast.LENGTH_LONG).show()
-					// Stay on payment screen or navigate back to order detail
 					val orderDetailRoute = "order_detail_staff_route/$deepLinkOrderId"
-					kotlinx.coroutines.delay(300)
+					val homeRoute = "home/$currentRole"
+					kotlinx.coroutines.delay(500)
+					
+					val currentDestination = navController.currentDestination?.route
+					val needsStack = currentDestination == "login" || 
+					                 currentDestination == null ||
+					                 (!currentDestination.startsWith("home/") && 
+					                  currentDestination != "order_list_route" &&
+					                  !currentDestination.startsWith("order_detail_staff_route"))
+					
+					if (needsStack) {
+						navController.navigate(homeRoute) {
+							popUpTo(navController.graph.startDestinationId) { inclusive = true }
+						}
+						kotlinx.coroutines.delay(300)
+						navController.navigate("order_list_route") {
+							popUpTo(homeRoute) { inclusive = false }
+						}
+						kotlinx.coroutines.delay(300)
+					}
+					
 					navController.navigate(orderDetailRoute) {
-						popUpTo("order_list_route") { inclusive = false }
-						launchSingleTop = true
+						popUpTo("order_list_route") { 
+							inclusive = false
+							saveState = false
+						}
+						launchSingleTop = false
+						restoreState = false
 					}
 				}
 			}
@@ -294,7 +379,7 @@ fun RoutingApp(
 			arguments = listOf(navArgument("id") { type = NavType.IntType })
 		) { backStackEntry ->
 			val id = backStackEntry.arguments?.getInt("id") ?: 0
-			PromotionDetailScreen(navController = navController, id = id)
+			PromotionDetailScreen(navController = navController, promotionId = id)
 		}
 
 		// 💰 Danh sách doanh thu
@@ -312,11 +397,12 @@ fun RoutingApp(
 		}
 		// 👥 Quản lý nhân viên
 		composable("user_management_route") {
-			EmployeesStaticListScreen(
-				onBackPress = {
-					navController.popBackStack()
-				}
-			)
+			val localContext = LocalContext.current
+			val token = localContext.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
+				.getString("jwt_token", "") ?: ""
+			EmployeesScreen(
+				token = token,
+				onBackPress = navController::popBackStack)
+			}
 		}
-	}
 }

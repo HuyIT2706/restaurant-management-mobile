@@ -310,8 +310,8 @@ fun PaymentScreen(
                                     onValueChange = { paymentViewModel.updatePromotionCode(it) },
                                     placeholder = { Text("Nhập mã khuyến mãi") },
                                     modifier = Modifier
-                                        .width(200.dp)
-                                        .height(48.dp),
+                                        .width(250.dp)
+                                        .padding(20.dp),
                                     shape = RoundedCornerShape(8.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = Color(0xFFE0E0E0),
@@ -351,8 +351,8 @@ fun PaymentScreen(
                         ) {
                             Text(
                                 text = "Chọn phương thức thanh toán:",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
                             PaymentMethodDropdown(

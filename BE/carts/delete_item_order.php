@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     
     try {
         // 1. TÌM order_id LIÊN QUAN VÀ GIÁ TRỊ CŨ (Cần cho việc tính toán lại)
-        $sql_find_order = "SELECT order_id FROM ORDER_DETAILS WHERE order_detail_id = ?";
+        $sql_find_order = "SELECT order_id FROM order_details WHERE order_detail_id = ?";
         $stmt_find = $conn->prepare($sql_find_order);
         $stmt_find->bind_param("i", $order_detail_id);
         $stmt_find->execute();
@@ -46,14 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
         $stmt_find->close();
         
         // 2. XÓA BẢN GHI KHỎI ORDER_DETAILS
-        $sql_delete = "DELETE FROM ORDER_DETAILS WHERE order_detail_id = ?";
+        $sql_delete = "DELETE FROM order_details WHERE order_detail_id = ?";
         $stmt_delete = $conn->prepare($sql_delete);
         $stmt_delete->bind_param("i", $order_detail_id);
         $stmt_delete->execute();
         $stmt_delete->close();
         
         // 3. TÍNH TOÁN LẠI TỔNG TIỀN (order_totalamount)
-        $sql_total = "SELECT SUM(order_detail_quantity * order_detail_price) AS total FROM ORDER_DETAILS WHERE order_id = ?";
+        $sql_total = "SELECT SUM(order_detail_quantity * order_detail_price) AS total FROM order_details WHERE order_id = ?";
         $stmt_total = $conn->prepare($sql_total);
         $stmt_total->bind_param("i", $order_id);
         $stmt_total->execute();
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
         $stmt_total->close();
 
         // 4. CẬP NHẬT ORDERS với tổng tiền mới
-        $sql_update_total = "UPDATE ORDERS SET order_totalamount = ? WHERE order_id = ?";
+        $sql_update_total = "UPDATE orders SET order_totalamount = ? WHERE order_id = ?";
         $stmt_update_total = $conn->prepare($sql_update_total);
         $stmt_update_total->bind_param("di", $order_total_amount, $order_id);
         $stmt_update_total->execute();

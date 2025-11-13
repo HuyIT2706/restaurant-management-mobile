@@ -15,38 +15,67 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import android.widget.Toast
 import com.example.onefood.R
 import com.example.onefood.data.model.PromotionItem
-import com.example.onefood.ui.theme.OneFoodTheme
+import com.example.onefood.main.home.viewmodel.PromotionViewModel
 import com.example.onefood.ui.theme.RedPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PromotionListScreen(navController: NavController) {
+fun PromotionListScreen(
+    navController: NavController,
+    viewModel: PromotionViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var promotionToDelete by remember { mutableStateOf<PromotionItem?>(null) }
-    
-    // Sample data - sau này sẽ lấy từ ViewModel/API
-    val promotions = remember {
-        mutableStateListOf(
-            PromotionItem(1, "FLASH10", "01/09/2025", "15/09/2025", true, "10%", 5, "PhầnTrăm", "3.000.000 đ", "Giảm 10% cho đơn hàng FLASH10"),
-            PromotionItem(2, "SALE50K", "10/09/2025", "20/09/2025", true, "50.000 đ", 10, "SốTiền", "1.000.000 đ", "Giảm 50.000 đ cho đơn hàng trên 1 triệu"),
-            PromotionItem(3, "WEEKEND20", "15/09/2025", "30/09/2025", false, "20%", 3, "PhầnTrăm", "2.000.000 đ", "Giảm 20% cuối tuần")
-        )
+
+    // Observe ViewModel state
+    val promotions by viewModel.promotions.collectAsState()
+
+    // Listen for refresh flag from child screens
+    val refreshFlagState = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow("promotion_refresh", false)
+        ?.collectAsState()
+
+    // Load promotions on first composition
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+        val token = prefs.getString("jwt_token", null)
+        if (token != null) {
+            viewModel.loadPromotions(token)
+        } else {
+            Toast.makeText(context, "Vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show()
+        }
     }
-    
-    val filteredPromotions = promotions.filter { 
-        it.code.contains(searchQuery, ignoreCase = true) ||
-        it.discount.contains(searchQuery, ignoreCase = true)
+
+    LaunchedEffect(refreshFlagState?.value) {
+        if (refreshFlagState?.value == true) {
+            val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+            val token = prefs.getString("jwt_token", null)
+            if (token != null) {
+                viewModel.loadPromotions(token)
+            }
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set("promotion_refresh", false)
+        }
+    }
+
+    val filteredPromotions = promotions.filter {
+        (it.code?.contains(searchQuery, ignoreCase = true) == true) ||
+                (it.discount?.contains(searchQuery, ignoreCase = true) == true)
     }
 
     Scaffold(
@@ -94,12 +123,12 @@ fun PromotionListScreen(navController: NavController) {
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Tìm kiếm") },
-                leadingIcon = { 
+                leadingIcon = {
                     Icon(
-                        Icons.Default.Search, 
+                        Icons.Default.Search,
                         contentDescription = "Tìm",
                         tint = Color.Gray
-                    ) 
+                    )
                 },
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -114,9 +143,9 @@ fun PromotionListScreen(navController: NavController) {
                     .height(56.dp),
                 singleLine = true
             )
-            
+
             Spacer(Modifier.height(16.dp))
-            
+
             // Promotion List
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -126,7 +155,9 @@ fun PromotionListScreen(navController: NavController) {
                         promo = promotion,
                         onEditClick = {
                             // Navigate to edit screen with only ID (simpler and safer)
-                            navController.navigate("promotion_edit/${promotion.id}")
+                            promotion.id?.let { id ->
+                                navController.navigate("promotion_edit/$id")
+                            }
                         },
                         onDelete = {
                             promotionToDelete = promotion
@@ -134,19 +165,37 @@ fun PromotionListScreen(navController: NavController) {
                         },
                         onPromotionClick = {
                             // Navigate to detail screen
-                            navController.navigate("promotion_detail/${promotion.id}")
+                            promotion.id?.let { id ->
+                                navController.navigate("promotion_detail/$id")
+                            }
                         }
                     )
                 }
             }
-            
+
             // Delete Confirmation Dialog
             if (showDeleteDialog && promotionToDelete != null) {
                 DeletePromotionDialog(
-                    promotionCode = promotionToDelete!!.code,
+                    promotionCode = promotionToDelete!!.code ?: "",
                     onConfirm = {
                         val promotionId = promotionToDelete!!.id
-                        promotions.removeAll { it.id == promotionId }
+                        if (promotionId != null) {
+                            val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+                            val token = prefs.getString("jwt_token", null)
+                            if (token != null) {
+                                viewModel.deletePromotion(token, promotionId) { success ->
+                                    if (success) {
+                                        Toast.makeText(context, "Xóa khuyến mãi thành công", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Lỗi khi xóa khuyến mãi", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(context, "Vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Không thể xác định ID khuyến mãi", Toast.LENGTH_SHORT).show()
+                        }
                         showDeleteDialog = false
                         promotionToDelete = null
                     },
@@ -209,7 +258,7 @@ fun DeletePromotionDialog(
                         )
                     }
                 }
-                
+
                 // Message
                 Text(
                     text = "Bạn có chắc chắn muốn xoá khuyến mãi $promotionCode ?",
@@ -217,7 +266,7 @@ fun DeletePromotionDialog(
                     color = Color.Black,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -239,7 +288,7 @@ fun DeletePromotionDialog(
                             color = Color.White
                         )
                     }
-                    
+
                     // Cancel Button
                     Button(
                         onClick = onDismiss,
@@ -259,13 +308,5 @@ fun DeletePromotionDialog(
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PromotionListScreenPreview() {
-    OneFoodTheme {
-        PromotionListScreen(navController = rememberNavController())
     }
 }

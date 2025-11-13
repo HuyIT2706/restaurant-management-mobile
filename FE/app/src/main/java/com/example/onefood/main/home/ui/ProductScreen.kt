@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.onefood.R
@@ -60,6 +61,26 @@ fun ProductScreen(
     
     // Observe DeleteProductViewModel state
     val deleteState by deleteViewModel.state.collectAsState()
+    
+    // Track previous route to detect when returning from Add/Update screens
+    var previousRoute by remember { mutableStateOf<String?>(null) }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    
+    // Refresh products when returning to this screen from Add/Update screens
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == "product_route") {
+            // Only refresh if we're returning from Add/Update screen (not initial load)
+            if (previousRoute != null && previousRoute != "product_route") {
+                // Small delay to ensure navigation is complete
+                kotlinx.coroutines.delay(100)
+                viewModel.refreshProducts()
+            }
+            previousRoute = currentRoute
+        } else {
+            previousRoute = currentRoute
+        }
+    }
     
     // Handle delete state changes
     LaunchedEffect(deleteState) {

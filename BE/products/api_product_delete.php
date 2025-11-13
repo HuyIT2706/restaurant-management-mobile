@@ -23,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] === "DELETE") {
         exit();
     }
 
-    $sql = "DELETE FROM PRODUCTS WHERE product_id = ?";
+    $sql = "DELETE FROM products WHERE product_id = ?";
     $stmt = $conn->prepare($sql); 
     $stmt->bind_param("i", $product_id);
     

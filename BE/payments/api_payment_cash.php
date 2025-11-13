@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // 1. Lấy thông tin order và table_id (Dùng FOR UPDATE để khóa record)
-        $sql_info = "SELECT order_totalamount, table_id, order_status FROM ORDERS WHERE order_id = ? FOR UPDATE";
+        $sql_info = "SELECT order_totalamount, table_id, order_status FROM orders WHERE order_id = ? FOR UPDATE";
         $stmt_info = $conn->prepare($sql_info);
         $stmt_info->bind_param("i", $order_id);
         $stmt_info->execute();
@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amount_paid = $order_info['order_totalamount'];
         $table_id = $order_info['table_id'];
 
-        $sql_update_order = "UPDATE ORDERS SET order_status = 'HoanThanh', cashier_id = ?, order_updated_at = NOW() WHERE order_id = ?";
+        $sql_update_order = "UPDATE orders SET order_status = 'HoanThanh', cashier_id = ?, order_updated_at = NOW() WHERE order_id = ?";
         $stmt_update_order = $conn->prepare($sql_update_order);
         
         $stmt_update_order->bind_param("ii", $cashier_id, $order_id); 
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 3. Ghi nhận giao dịch vào bảng PAYMENTS 
         // Cột: order_id, user_id, payment_method, payment_amount_paid
-        $sql_payment = "INSERT INTO PAYMENTS (order_id, user_id, payment_method, payment_amount_paid) VALUES (?, ?, ?, ?)";
+        $sql_payment = "INSERT INTO payments (order_id, user_id, payment_method, payment_amount_paid) VALUES (?, ?, ?, ?)";
         $stmt_payment = $conn->prepare($sql_payment);
 
         // Kiểu dữ liệu: i (order_id), i (user_id), s (method), d (amount)
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_payment->close();
 
         // 4. Cập nhật trạng thái Bàn về 'Trong'
-        $sql_update_table = "UPDATE TABLES SET status = 'Trong' WHERE table_id = ?";
+        $sql_update_table = "UPDATE tables SET status = 'Trong' WHERE table_id = ?";
         $stmt_update_table = $conn->prepare($sql_update_table);
         $stmt_update_table->bind_param("i", $table_id);
         $stmt_update_table->execute();

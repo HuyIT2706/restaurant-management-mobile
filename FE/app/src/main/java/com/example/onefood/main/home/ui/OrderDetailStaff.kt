@@ -46,9 +46,21 @@ fun OrderDetailStaff(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     
+    // Determine if order is completed based on order status
+    val isOrderCompleted = remember(orderDetail?.status) {
+        val status = orderDetail?.status?.lowercase() ?: ""
+        status.contains("hoanthanh") || status.contains("hoàn thành") || status.contains("completed")
+    }
+    
     // Determine if order is paid based on order status or payment method
     // Default button shows "Chưa thanh toán" until nhân viên xác nhận thủ công
     var currentPaymentStatus by remember { mutableStateOf(false) }
+    
+    // Update currentPaymentStatus when orderDetail changes
+    LaunchedEffect(orderDetail?.status) {
+        val status = orderDetail?.status?.lowercase() ?: ""
+        currentPaymentStatus = status.contains("hoanthanh") || status.contains("hoàn thành") || status.contains("completed")
+    }
     
     // Load order detail when screen is first displayed or when orderId changes
     // This will also trigger when screen is recreated after navigation from deep link
@@ -58,15 +70,17 @@ fun OrderDetailStaff(
     
     // Handle payment status toggle
     val onTogglePaymentStatus = {
-        currentPaymentStatus = !currentPaymentStatus
-        // TODO: Call API to update payment status on server
-        // For now, just update local state
-        if (currentPaymentStatus) {
-            Toast.makeText(context, "Đơn hàng đã được đánh dấu là đã thanh toán", Toast.LENGTH_SHORT).show()
-            // Refresh order detail to get updated status
-            viewModel.refreshOrderDetail(context, orderId)
-        } else {
-            Toast.makeText(context, "Đơn hàng đã được đánh dấu là chưa thanh toán", Toast.LENGTH_SHORT).show()
+        if (!isOrderCompleted) {
+            currentPaymentStatus = !currentPaymentStatus
+            // TODO: Call API to update payment status on server
+            // For now, just update local state
+            if (currentPaymentStatus) {
+                Toast.makeText(context, "Đơn hàng đã thanh toán", Toast.LENGTH_SHORT).show()
+                // Refresh order detail to get updated status
+                viewModel.refreshOrderDetail(context, orderId)
+            } else {
+                Toast.makeText(context, "Đơn hàng chưa thanh toán", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -326,11 +340,16 @@ fun OrderDetailStaff(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Left: Thanh toán button (navigate to payment screen)
+                            // Disable if order is completed
                             Button(
                                 onClick = {
                                     navController.navigate("payment_route/${orderDetail!!.id}")
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
+                                enabled = !isOrderCompleted,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = RedPrimary,
+                                    disabledContainerColor = Color.Gray.copy(alpha = 0.5f)
+                                ),
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(56.dp),
@@ -340,15 +359,18 @@ fun OrderDetailStaff(
                                     text = "Thanh toán",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = if (isOrderCompleted) Color.Gray else Color.White
                                 )
                             }
                             
-                            // Right: Chưa thanh toán / Đã thanh toán button (toggle payment status)
+                            // Right: Chưa thanh toán / Đã thanh toán button
+                            // Show "Đã thanh toán" (green) if order is completed, otherwise show toggle button
                             Button(
                                 onClick = onTogglePaymentStatus,
+                                enabled = !isOrderCompleted, // Disable toggle if order is completed
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (currentPaymentStatus) Color(0xFF4CAF50) else RedPrimary
+                                    containerColor = if (isOrderCompleted || currentPaymentStatus) Color(0xFF4CAF50) else RedPrimary,
+                                    disabledContainerColor = Color(0xFF4CAF50)
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
@@ -356,7 +378,7 @@ fun OrderDetailStaff(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text(
-                                    text = if (currentPaymentStatus) "Đã thanh toán" else "Chưa thanh toán",
+                                    text = if (isOrderCompleted || currentPaymentStatus) "Đã thanh toán" else "Chưa thanh toán",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White

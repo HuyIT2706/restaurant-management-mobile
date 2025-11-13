@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $result->fetch_assoc();
 
         // Gộp họ + tên thành fullname
-        $user['fullname'] = trim($user['user_firstname'] . ' ' . $user['user_lastname']);
+        $user['fullname'] = trim($user['user_lastname'] . ' ' . $user['user_firstname']);
 
         echo json_encode([
             "status" => "success",

@@ -3,6 +3,9 @@ package com.example.onefood.di
 import com.example.onefood.data.api.ProductApiService
 import com.example.onefood.data.api.TableApiService
 import com.example.onefood.data.api.OrderApiService
+import com.example.onefood.data.api.UserApiService
+import com.example.onefood.data.repository.UserRepository
+import com.example.onefood.data.api.StatisticsApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,7 +29,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "http://10.0.2.2/BeMobile/BE/"
+    private const val BASE_URL = "https://onefood.id.vn/BE/"
 
     // Ktor HttpClient for Product API
     @Provides
@@ -43,6 +46,18 @@ object NetworkModule {
                 level = LogLevel.BODY
             }
         }
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserApiService(client: HttpClient): UserApiService {
+        return UserApiService(client, BASE_URL)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserRepository(userApiService: UserApiService): UserRepository {
+        return UserRepository(userApiService)
     }
 
     @Provides
@@ -90,5 +105,16 @@ object NetworkModule {
     @Singleton
     fun provideTableApi(retrofit: Retrofit): TableApiService {
         return retrofit.create(TableApiService::class.java)
+    }
+    @Provides
+    @Singleton
+    fun providePromotionApiService(client: HttpClient): com.example.onefood.data.api.PromotionApiService {
+        return com.example.onefood.data.api.PromotionApiService(client, BASE_URL)
+    }
+
+    @Provides
+    @Singleton
+    fun provideStatisticsApiService(client: HttpClient): StatisticsApiService {
+        return StatisticsApiService(client, BASE_URL)
     }
 }
