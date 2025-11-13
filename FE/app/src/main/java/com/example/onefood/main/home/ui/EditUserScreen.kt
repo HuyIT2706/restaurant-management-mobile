@@ -6,13 +6,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,7 +31,7 @@ import com.example.onefood.ui.theme.RedPrimary
 import com.example.onefood.core.components.BottomTabBar
 
 @Composable
-fun EditUserScreenTopBar(navController: NavController, onSave: () -> Unit) {
+fun EditUserScreenTopBar(navController: NavController, onSave: () -> Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -47,27 +48,20 @@ fun EditUserScreenTopBar(navController: NavController, onSave: () -> Unit) {
             )
         }
         Text(
-            text = "Edit Profile",
+            text = "Xem thông tin",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
-        IconButton(onClick = onSave) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Lưu",
-                tint = Color(0xFF4CAF50),
-                modifier = Modifier.size(24.dp)
-            )
-        }
     }
 }
 
 @Composable
 fun EditUserScreen(navController: NavController) {
-    var firstName by remember { mutableStateOf("Lê") }
-    var lastName by remember { mutableStateOf("Thị Tuyết Băng") }
-    var phone by remember { mutableStateOf("+84 01234567890") }
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
+    var fullName by remember { mutableStateOf(prefs.getString("user_name", "") ?: "") }
+    var phone by remember { mutableStateOf(prefs.getString("user_phone", "") ?: "") }
     var gender by remember { mutableStateOf("") }
 
     Scaffold(
@@ -134,19 +128,20 @@ fun EditUserScreen(navController: NavController) {
                     color = Color.Black
                 )
                 
-                // First name
+                // Full name
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "First name",
+                        text = "Họ và tên",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.Black
                     )
                     OutlinedTextField(
-                        value = firstName,
-                        onValueChange = { firstName = it },
+                        value = fullName,
+                        onValueChange = { fullName = it },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
+                        enabled = false,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = RedPrimary,
                             unfocusedBorderColor = Color.Gray,
@@ -155,30 +150,8 @@ fun EditUserScreen(navController: NavController) {
                         )
                     )
                 }
-                
-                // Last name
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Last name",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black
-                    )
-                    OutlinedTextField(
-                        value = lastName,
-                        onValueChange = { lastName = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = RedPrimary,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedContainerColor = Color(0xFFF0F0F0),
-                            unfocusedContainerColor = Color(0xFFF0F0F0)
-                        )
-                    )
-                }
-                
-                // Phone
+
+                // Phone (read-only)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Phone",
@@ -191,6 +164,7 @@ fun EditUserScreen(navController: NavController) {
                         onValueChange = { phone = it },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
+                        enabled = false,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = RedPrimary,
                             unfocusedBorderColor = Color.Gray,
@@ -199,11 +173,11 @@ fun EditUserScreen(navController: NavController) {
                         )
                     )
                 }
-                
-                // Gender
+
+                // Gender (read-only, if available)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Gender",
+                        text = "Giới tính",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.Black
@@ -211,9 +185,10 @@ fun EditUserScreen(navController: NavController) {
                     OutlinedTextField(
                         value = gender,
                         onValueChange = { gender = it },
-                        placeholder = { Text("Chọn giới tính") },
+                        placeholder = { Text("Không có dữ liệu") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
+                        enabled = false,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = RedPrimary,
                             unfocusedBorderColor = Color.Gray,

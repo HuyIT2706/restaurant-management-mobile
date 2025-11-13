@@ -10,7 +10,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
 
 class UserApiService(
     private val client: HttpClient,
@@ -49,7 +48,7 @@ class UserApiService(
             if (elem.containsKey("success")) {
                 val success = elem["success"]?.jsonPrimitive?.booleanOrNull ?: false
                 if (!success) {
-                    val msg = elem["message"]?.jsonPrimitive?.contentOrNull ?: "Lỗi khi lấy dữ liệu"
+                    val msg = try { elem["message"]?.jsonPrimitive?.content } catch (e: Exception) { null } ?: "Lỗi khi lấy dữ liệu"
                     throw Exception(msg)
                 }
             }
