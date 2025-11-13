@@ -21,6 +21,12 @@ import com.example.onefood.R
 import com.example.onefood.data.model.PromotionItem
 import com.example.onefood.ui.theme.RedPrimary
 
+// ✅ Hàm định dạng ngày (yyyy-MM-dd -> dd-MM-yyyy)
+fun formatDate(date: String): String {
+    val parts = date.take(10).split("-")
+    return if (parts.size == 3) "${parts[2]}-${parts[1]}-${parts[0]}" else date
+}
+
 @Composable
 fun SearchBarWithFilter(
     searchQuery: String,
@@ -117,12 +123,14 @@ fun PromotionListItem(
                     fontSize = 14.sp,
                     color = Color.Black
                 )
+                // ✅ Hiển thị ngày đã định dạng dd-MM-yyyy
                 Text(
-                    text = "Từ ${promo.startDate} - ${promo.endDate}",
+                    text = "Từ ${formatDate(promo.startDate)} - ${formatDate(promo.endDate)}",
                     fontSize = 13.sp,
                     color = Color.Gray
                 )
             }
+
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -140,6 +148,7 @@ fun PromotionListItem(
                         fontWeight = FontWeight.Medium
                     )
                 }
+
                 Text(
                     text = promo.discount,
                     color = Color(0xFFFF9800),
@@ -147,17 +156,15 @@ fun PromotionListItem(
                     fontWeight = FontWeight.Bold
                 )
             }
+
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Edit Button
+                // Nút sửa
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(
-                            Color.White,
-                            shape = RoundedCornerShape(6.dp)
-                        )
+                        .background(Color.White, shape = RoundedCornerShape(6.dp))
                         .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(6.dp))
                         .clickable { onEditClick() },
                     contentAlignment = Alignment.Center
@@ -170,14 +177,11 @@ fun PromotionListItem(
                     )
                 }
 
-                // Delete Button
+                // Nút xóa
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .background(
-                            RedPrimary,
-                            shape = RoundedCornerShape(6.dp)
-                        )
+                        .background(RedPrimary, shape = RoundedCornerShape(6.dp))
                         .clickable(onClick = onDelete),
                     contentAlignment = Alignment.Center
                 ) {

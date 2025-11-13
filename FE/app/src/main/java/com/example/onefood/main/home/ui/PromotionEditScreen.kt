@@ -1,11 +1,14 @@
 package com.example.onefood.main.home.ui
 
+import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.material3.MenuAnchorType
@@ -22,9 +25,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import android.widget.Toast
 import com.example.onefood.main.home.viewmodel.PromotionViewModel
 import com.example.onefood.ui.theme.RedPrimary
+import java.util.*
+
+/** 🔹 Hàm format chỉ lấy ngày (YYYY-MM-DD → DD/MM/YYYY) */
+fun formatDateOnly(datetime: String): String {
+    return datetime.take(10).split("-").reversed().joinToString("/")
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,39 +43,62 @@ fun PromotionEditScreen(
 ) {
     val context = LocalContext.current
 
-    // Lấy promotion từ ViewModel
-    val promotions by viewModel.promotions.collectAsState()
-    val promotion = remember(promotions, promotionId) {
-        promotions.find { it.id == promotionId }
+    // 🔹 Load thông tin khuyến mãi khi mở
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+        val token = prefs.getString("jwt_token", null)
+        if (token != null) {
+            viewModel.loadPromotionById(token, promotionId)
+        } else {
+            Toast.makeText(context, "Vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show()
+            navController.popBackStack()
+        }
     }
 
-    var code by remember { mutableStateOf(promotion?.code ?: "") }
-    var quantity by remember { mutableStateOf(promotion?.quantity?.toString() ?: "") }
-    var discountType by remember { mutableStateOf(promotion?.discountType ?: "PhanTram") }
+    val promotion by viewModel.currentPromotion.collectAsState()
+
+    if (promotion == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = RedPrimary)
+        }
+        return
+    }
+
+    // 🔹 Biến dữ liệu
+    var code by remember { mutableStateOf(promotion!!.code) }
+    var quantity by remember { mutableStateOf(promotion!!.quantity.toString()) }
+    var discountType by remember { mutableStateOf(promotion!!.discountType) }
     var showDiscountTypeDropdown by remember { mutableStateOf(false) }
-    var startDate by remember { mutableStateOf(promotion?.startDate ?: "") }
-    var endDate by remember { mutableStateOf(promotion?.endDate ?: "") }
+    var startDate by remember { mutableStateOf(formatDateOnly(promotion!!.startDate)) }
+    var endDate by remember { mutableStateOf(formatDateOnly(promotion!!.endDate)) }
     var discountValue by remember {
-        mutableStateOf(
-            if (promotion != null) promotion.discount.replace("%", "").replace(" đ", "").replace(".", "").trim() else ""
-        )
+        mutableStateOf(promotion!!.discount.replace("%", "").replace(" đ", "").replace(".", "").trim())
     }
     var minOrderValue by remember {
-        mutableStateOf(
-            if (promotion != null) promotion.minOrderValue.replace(" đ", "").replace(".", "").trim() else ""
-        )
+        mutableStateOf(promotion!!.minOrderValue.replace(" đ", "").replace(".", "").trim())
     }
-    var description by remember { mutableStateOf(promotion?.description ?: "") }
+    var description by remember { mutableStateOf(promotion!!.description) }
     var isSubmitting by remember { mutableStateOf(false) }
-    var showStatusDropdown by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Hoạt động") }
+
+    val calendar = Calendar.getInstance()
+
+    // 🔹 Chọn ngày từ DatePicker
+    fun showDatePicker(onDateSelected: (String) -> Unit) {
+        val datePicker = DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                onDateSelected(String.format("%02d/%02d/%04d", dayOfMonth, month + 1, year))
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+        datePicker.show()
+    }
 
     Dialog(
         onDismissRequest = { navController.popBackStack() },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
-        )
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
             modifier = Modifier
@@ -75,16 +106,10 @@ fun PromotionEditScreen(
                 .background(Color.Black.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { navController.popBackStack() }
-            )
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.85f)
-                    .clickable { }, // Prevent clicks from passing through
+                    .fillMaxHeight(0.85f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -96,15 +121,16 @@ fun PromotionEditScreen(
                     contentPadding = PaddingValues(vertical = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+
+                    // 🔹 Header
                     item {
-                        // Header
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "CẬP NHẬT KHUYẾN MÃI",
+                                "CẬP NHẬT KHUYẾN MÃI",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
@@ -113,35 +139,27 @@ fun PromotionEditScreen(
                                 onClick = { navController.popBackStack() },
                                 modifier = Modifier
                                     .size(32.dp)
-                                    .background(
-                                        Color(0xFFE0E0E0),
-                                        shape = RoundedCornerShape(16.dp)
-                                    )
+                                    .background(Color(0xFFE0E0E0), RoundedCornerShape(16.dp))
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Đóng",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Icon(Icons.Default.Close, contentDescription = "Đóng", tint = Color.Black)
                             }
                         }
                     }
 
+                    // 🔹 Mã khuyến mãi (readonly)
                     item {
-                        // Mã khuyến mãi (disabled)
                         OutlinedTextField(
                             value = code,
-                            onValueChange = { },
+                            onValueChange = {},
                             label = { Text("Mã khuyến mãi") },
+                            enabled = false,
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = false
+                            shape = RoundedCornerShape(8.dp)
                         )
                     }
 
+                    // 🔹 Số lượng
                     item {
-                        // Số lượng áp dụng
                         OutlinedTextField(
                             value = quantity,
                             onValueChange = { quantity = it.filter { c -> c.isDigit() } },
@@ -152,20 +170,18 @@ fun PromotionEditScreen(
                         )
                     }
 
+                    // 🔹 Loại giảm giá
                     item {
-                        // Loại giảm giá
                         ExposedDropdownMenuBox(
                             expanded = showDiscountTypeDropdown,
                             onExpandedChange = { showDiscountTypeDropdown = !showDiscountTypeDropdown }
                         ) {
                             OutlinedTextField(
                                 value = if (discountType == "PhanTram") "Phần trăm" else "Số tiền",
-                                onValueChange = { },
+                                onValueChange = {},
                                 label = { Text("Loại giảm giá") },
                                 readOnly = true,
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDiscountTypeDropdown)
-                                },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDiscountTypeDropdown) },
                                 modifier = Modifier
                                     .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
                                     .fillMaxWidth(),
@@ -188,51 +204,73 @@ fun PromotionEditScreen(
                         }
                     }
 
+                    // 🔹 Giá trị giảm
                     item {
-                        // Giá trị giảm
                         OutlinedTextField(
                             value = discountValue,
-                            onValueChange = {
-                                discountValue = if (discountType == "PhầnTrăm") {
-                                    it.filter { c -> c.isDigit() }.take(3)
-                                } else {
-                                    it.filter { c -> c.isDigit() || c == '.' }
-                                }
-                            },
-                            label = { Text("Nhập giá trị giảm giá") },
-                            placeholder = { Text(if (discountType == "PhầnTrăm") "VD: 10" else "VD: 50000") },
-                            suffix = { Text(if (discountType == "PhầnTrăm") "%" else "đ") },
+                            onValueChange = { discountValue = it.filter { c -> c.isDigit() || c == '.' } },
+                            label = { Text("Giá trị giảm") },
+                            suffix = { Text(if (discountType == "PhanTram") "%" else "đ") },
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp)
                         )
                     }
 
+                    // 🔹 Ngày bắt đầu & kết thúc
                     item {
-                        // Ngày bắt đầu và kết thúc
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedTextField(
                                 value = startDate,
-                                onValueChange = { startDate = it },
+                                onValueChange = {},
                                 label = { Text("Ngày bắt đầu") },
-                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("DD/MM/YYYY") },
+                                readOnly = true,
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = "Chọn ngày bắt đầu",
+                                        tint = RedPrimary,
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clickable { showDatePicker { selected -> startDate = selected } }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { showDatePicker { selected -> startDate = selected } },
                                 shape = RoundedCornerShape(8.dp)
                             )
+
                             OutlinedTextField(
                                 value = endDate,
-                                onValueChange = { endDate = it },
+                                onValueChange = {},
                                 label = { Text("Ngày kết thúc") },
-                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("DD/MM/YYYY") },
+                                readOnly = true,
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = "Chọn ngày kết thúc",
+                                        tint = RedPrimary,
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clickable { showDatePicker { selected -> endDate = selected } }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { showDatePicker { selected -> endDate = selected } },
                                 shape = RoundedCornerShape(8.dp)
                             )
                         }
                     }
 
+                    // 🔹 Giá trị đơn hàng tối thiểu
                     item {
-                        // Giá trị đơn hàng tối thiểu
                         OutlinedTextField(
                             value = minOrderValue,
                             onValueChange = { minOrderValue = it.filter { c -> c.isDigit() || c == '.' } },
@@ -244,48 +282,12 @@ fun PromotionEditScreen(
                         )
                     }
 
+                    // 🔹 Mô tả
                     item {
-                        // Trạng thái
-                        ExposedDropdownMenuBox(
-                            expanded = showStatusDropdown,
-                            onExpandedChange = { showStatusDropdown = !showStatusDropdown }
-                        ) {
-                            OutlinedTextField(
-                                value = status,
-                                onValueChange = { },
-                                label = { Text("Trạng thái") },
-                                readOnly = true,
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showStatusDropdown)
-                                },
-                                modifier = Modifier
-                                    .menuAnchor(MenuAnchorType.PrimaryEditable, enabled = true)
-                                    .fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            ExposedDropdownMenu(
-                                expanded = showStatusDropdown,
-                                onDismissRequest = { showStatusDropdown = false }
-                            ) {
-                                listOf("Hoạt động", "Tạm dừng", "Kết thúc").forEach { s ->
-                                    DropdownMenuItem(
-                                        text = { Text(s) },
-                                        onClick = {
-                                            status = s
-                                            showStatusDropdown = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item {
-                        // Mô tả
                         OutlinedTextField(
                             value = description,
                             onValueChange = { description = it },
-                            label = { Text("Nhập mô tả") },
+                            label = { Text("Mô tả") },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(100.dp),
@@ -294,22 +296,10 @@ fun PromotionEditScreen(
                         )
                     }
 
+                    // 🔹 Nút cập nhật
                     item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    item {
-                        // Submit Button
                         Button(
                             onClick = {
-                                if (promotion == null) {
-                                    Toast.makeText(context, "Không tìm thấy khuyến mãi", Toast.LENGTH_SHORT).show()
-                                    return@Button
-                                }
-                                if (discountValue.isBlank() || startDate.isBlank() || endDate.isBlank()) {
-                                    Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
-                                    return@Button
-                                }
                                 isSubmitting = true
                                 val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
                                 val token = prefs.getString("jwt_token", null)
@@ -318,27 +308,23 @@ fun PromotionEditScreen(
                                     isSubmitting = false
                                     return@Button
                                 }
-                                val promoValue = discountValue.toDoubleOrNull() ?: 0.0
-                                val promoQuantity = quantity.toIntOrNull() ?: 1
-                                val promoMinOrder = minOrderValue.toDoubleOrNull() ?: 0.0
-                                val promoActive = if (promotion.status) 1 else 0
 
                                 viewModel.updatePromotion(
-                                    token,
-                                    promotion.id,
-                                    code,
-                                    discountType,
-                                    promoValue,
-                                    promoQuantity,
-                                    description,
-                                    promoMinOrder,
-                                    startDate,
-                                    endDate,
-                                    promoActive
+                                    token = token,
+                                    promoId = promotion!!.id,
+                                    promoCode = code,
+                                    promoType = discountType,
+                                    promoValue = discountValue.toDoubleOrNull() ?: 0.0,
+                                    promoQuantity = quantity.toIntOrNull() ?: 1,
+                                    promoDesc = description,
+                                    promoMinOrderAmount = minOrderValue.toDoubleOrNull() ?: 0.0,
+                                    promoStartDate = startDate,
+                                    promoEndDate = endDate,
+                                    promoActive = if (promotion!!.status) 1 else 0
                                 ) { success ->
                                     isSubmitting = false
                                     if (success) {
-                                        Toast.makeText(context, "Cập nhật khuyến mãi thành công", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Cập nhật thành công", Toast.LENGTH_SHORT).show()
                                         navController.popBackStack()
                                     } else {
                                         Toast.makeText(context, "Lỗi khi cập nhật khuyến mãi", Toast.LENGTH_SHORT).show()
@@ -353,18 +339,9 @@ fun PromotionEditScreen(
                                 .height(50.dp)
                         ) {
                             if (isSubmitting) {
-                                CircularProgressIndicator(
-                                    color = Color.White,
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
                             } else {
-                                Text(
-                                    text = "Cập nhật khuyến mãi",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
+                                Text("Cập nhật khuyến mãi", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }

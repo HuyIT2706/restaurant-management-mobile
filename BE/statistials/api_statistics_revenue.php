@@ -39,11 +39,11 @@ while ($row = $result->fetch_assoc()) {
 
     if (!empty($imageUrl)) {
         // Nếu có chứa "localhost" thì thay bằng IP thật
-        $imageUrl = str_replace('http://localhost', 'http://10.237.138.241', $imageUrl);
+        $imageUrl = str_replace('http://localhost', 'http://10.111.17.241', $imageUrl);
 
         // Nếu chỉ là tên file (chưa có http)
         if (!preg_match('/^https?:\/\//', $imageUrl)) {
-            $basePath = "http://10.237.138.241/BeMobie/restaurant-management-mobile/BE/assets/products/";
+            $basePath = "http://10.111.17.241/BeMobie/restaurant-management-mobile/BE/assets/products/";
             $imageUrl = $basePath . ltrim($imageUrl, '/');
         }
     }

@@ -7,6 +7,7 @@ import com.example.onefood.data.model.PromotionItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,6 +22,11 @@ class PromotionViewModel @Inject constructor(
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading
 
+    // 🔹 Dùng để lưu khuyến mãi hiện tại (khi xem chi tiết hoặc chỉnh sửa)
+    private val _currentPromotion = MutableStateFlow<PromotionItem?>(null)
+    val currentPromotion: StateFlow<PromotionItem?> = _currentPromotion.asStateFlow()
+
+    // 🔹 Load toàn bộ danh sách khuyến mãi
     fun loadPromotions(token: String) {
         viewModelScope.launch {
             _loading.value = true
@@ -28,7 +34,7 @@ class PromotionViewModel @Inject constructor(
                 val list = service.getPromotions(token)
                 _promotions.value = list
             } catch (e: Exception) {
-                // log or handle
+                e.printStackTrace()
                 _promotions.value = emptyList()
             } finally {
                 _loading.value = false
@@ -36,6 +42,20 @@ class PromotionViewModel @Inject constructor(
         }
     }
 
+    // 🔹 Load chi tiết 1 khuyến mãi theo ID
+    fun loadPromotionById(token: String, id: Int) {
+        viewModelScope.launch {
+            try {
+                val promo = service.getPromotion(id, token)
+                _currentPromotion.value = promo
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _currentPromotion.value = null
+            }
+        }
+    }
+
+    // 🔹 Xoá khuyến mãi
     fun deletePromotion(token: String, promoId: Int, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
@@ -43,11 +63,13 @@ class PromotionViewModel @Inject constructor(
                 if (ok) loadPromotions(token)
                 onComplete(ok)
             } catch (e: Exception) {
+                e.printStackTrace()
                 onComplete(false)
             }
         }
     }
 
+    // 🔹 Thêm khuyến mãi
     fun addPromotion(
         token: String,
         promoCode: String,
@@ -76,11 +98,13 @@ class PromotionViewModel @Inject constructor(
                 if (id != null) loadPromotions(token)
                 onComplete(id)
             } catch (e: Exception) {
+                e.printStackTrace()
                 onComplete(null)
             }
         }
     }
 
+    // 🔹 Cập nhật khuyến mãi
     fun updatePromotion(
         token: String,
         promoId: Int,
@@ -113,6 +137,7 @@ class PromotionViewModel @Inject constructor(
                 if (ok) loadPromotions(token)
                 onComplete(ok)
             } catch (e: Exception) {
+                e.printStackTrace()
                 onComplete(false)
             }
         }

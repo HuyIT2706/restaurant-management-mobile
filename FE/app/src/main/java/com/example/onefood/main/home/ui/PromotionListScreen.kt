@@ -8,15 +8,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,7 +23,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import android.widget.Toast
-import com.example.onefood.R
 import com.example.onefood.data.model.PromotionItem
 import com.example.onefood.main.home.viewmodel.PromotionViewModel
 import com.example.onefood.ui.theme.RedPrimary
@@ -40,10 +38,10 @@ fun PromotionListScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var promotionToDelete by remember { mutableStateOf<PromotionItem?>(null) }
 
-    // Observe ViewModel state
+    // Lấy danh sách khuyến mãi từ ViewModel
     val promotions by viewModel.promotions.collectAsState()
 
-    // Load promotions on first composition
+    // Load khuyến mãi khi mở màn hình
     LaunchedEffect(Unit) {
         val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
         val token = prefs.getString("jwt_token", null)
@@ -62,7 +60,7 @@ fun PromotionListScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Khuyến mại", fontWeight = FontWeight.Medium) },
+                title = { Text("Khuyến mãi", fontWeight = FontWeight.Medium) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
@@ -91,7 +89,9 @@ fun PromotionListScreen(
                 }
             )
         },
-        modifier = Modifier.fillMaxSize().background(Color.White)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -99,17 +99,13 @@ fun PromotionListScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Search bar
+            // Ô tìm kiếm
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Tìm kiếm") },
                 leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Tìm",
-                        tint = Color.Gray
-                    )
+                    Icon(Icons.Default.Search, contentDescription = "Tìm", tint = Color.Gray)
                 },
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -127,15 +123,12 @@ fun PromotionListScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Promotion List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            // Danh sách khuyến mãi
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(filteredPromotions) { promotion ->
                     PromotionListItem(
                         promo = promotion,
                         onEditClick = {
-                            // Navigate to edit screen with only ID (simpler and safer)
                             navController.navigate("promotion_edit/${promotion.id}")
                         },
                         onDelete = {
@@ -143,27 +136,33 @@ fun PromotionListScreen(
                             showDeleteDialog = true
                         },
                         onPromotionClick = {
-                            // Navigate to detail screen
                             navController.navigate("promotion_detail/${promotion.id}")
                         }
                     )
                 }
             }
 
-            // Delete Confirmation Dialog
+            // Hộp thoại xác nhận xoá
             if (showDeleteDialog && promotionToDelete != null) {
                 DeletePromotionDialog(
                     promotionCode = promotionToDelete!!.code,
                     onConfirm = {
-                        val promotionId = promotionToDelete!!.id
-                        val token = "your_token_here" // TODO: get token
-                        viewModel.deletePromotion(token, promotionId) { success ->
-                            if (success) {
-                                Toast.makeText(context, "Xóa khuyến mãi thành công", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Lỗi khi xóa khuyến mãi", Toast.LENGTH_SHORT).show()
+                        val prefs = context.getSharedPreferences("onefood_prefs", android.content.Context.MODE_PRIVATE)
+                        val token = prefs.getString("jwt_token", null)
+
+                        if (token != null) {
+                            val promotionId = promotionToDelete!!.id
+                            viewModel.deletePromotion(token, promotionId) { success ->
+                                if (success) {
+                                    Toast.makeText(context, "Xóa khuyến mãi thành công", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Lỗi khi xóa khuyến mãi", Toast.LENGTH_SHORT).show()
+                                }
                             }
+                        } else {
+                            Toast.makeText(context, "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show()
                         }
+
                         showDeleteDialog = false
                         promotionToDelete = null
                     },
@@ -185,8 +184,7 @@ fun DeletePromotionDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth(0.85f),
+            modifier = Modifier.fillMaxWidth(0.85f),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -197,7 +195,6 @@ fun DeletePromotionDialog(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -213,10 +210,7 @@ fun DeletePromotionDialog(
                         onClick = onDismiss,
                         modifier = Modifier
                             .size(32.dp)
-                            .background(
-                                Color(0xFFE0E0E0),
-                                shape = RoundedCornerShape(16.dp)
-                            )
+                            .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(16.dp))
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -227,20 +221,17 @@ fun DeletePromotionDialog(
                     }
                 }
 
-                // Message
                 Text(
-                    text = "Bạn có chắc chắn muốn xoá khuyến mãi $promotionCode ?",
+                    text = "Bạn có chắc chắn muốn xoá khuyến mãi $promotionCode?",
                     fontSize = 16.sp,
                     color = Color.Black,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // OK Button
                     Button(
                         onClick = onConfirm,
                         colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
@@ -249,15 +240,9 @@ fun DeletePromotionDialog(
                             .weight(1f)
                             .height(45.dp)
                     ) {
-                        Text(
-                            text = "OK",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                        Text("OK", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
 
-                    // Cancel Button
                     Button(
                         onClick = onDismiss,
                         colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
@@ -266,12 +251,7 @@ fun DeletePromotionDialog(
                             .weight(1f)
                             .height(45.dp)
                     ) {
-                        Text(
-                            text = "HUỶ",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                        Text("HUỶ", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }

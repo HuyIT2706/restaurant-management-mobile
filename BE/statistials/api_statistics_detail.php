@@ -71,11 +71,11 @@ $imageUrl = $productInfo['image_url'] ?? '';
 
 if (!empty($imageUrl)) {
     // Nếu trong DB có 'http://localhost', thay bằng IP thực của máy server (LAN)
-    $imageUrl = str_replace('http://localhost', 'http://10.237.138.241', $imageUrl);
+    $imageUrl = str_replace('http://localhost', 'http://10.111.17.241', $imageUrl);
 
     // Nếu ảnh chỉ là tên file, thêm đường dẫn gốc đầy đủ
     if (!preg_match('/^https?:\/\//', $imageUrl)) {
-        $basePath = "http://10.237.138.241/BeMobie/restaurant-management-mobile/BE/assets/products/";
+        $basePath = "http://10.111.17.241/BeMobie/restaurant-management-mobile/BE/assets/products/";
         $imageUrl = $basePath . ltrim($imageUrl, '/');
     }
 }
