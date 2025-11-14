@@ -1,10 +1,8 @@
-# Cấu hình IDE và Metadata (Android Studio)
 *.iml
 .DS_Store
 /local.properties
 /local.properties
 
-# Thư mục IDE và Cache (Cần loại bỏ)
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
@@ -12,11 +10,11 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 /.idea/gradle.xml
-/.idea/inspectionProfiles.xml
-/.idea/vcs.xml
-/.BE/.env
+.idea/inspectionProfiles.xml
+.idea/vcs.xml
+/BE/.env
+/.env
 
-# THƯ MỤC BUILD VÀ OUTPUT (BẮT BUỘC)
 /build
 /app/build
 /captures
