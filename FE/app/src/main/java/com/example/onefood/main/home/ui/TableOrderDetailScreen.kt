@@ -208,7 +208,7 @@ fun TableOrderDetailScreen(
                     ) {
                         items(
                             items = filteredItems,
-                            key = { "${it.productId}_${it.notes}" }
+                            key = { item -> item.productId ?: 0 }
                         ) { item ->
                             CartItemCard(
                                 item = item,

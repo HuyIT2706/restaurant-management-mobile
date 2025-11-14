@@ -131,7 +131,7 @@ fun UserScreen(navController: NavController) {
                         onClick = { navController.navigate("edit_user") },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.width(120.dp)
+                        modifier = Modifier.width(200.dp)
                     ) {
                         Text(
                             text = "Xem thông tin",

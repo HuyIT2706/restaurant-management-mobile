@@ -354,12 +354,33 @@ fun PromotionEditScreen(
                                     return@Button
                                 }
 
+                                // Validate required fields before updating
+                                val finalPromoId = promotion.id ?: promotionId
+                                if (finalPromoId <= 0) {
+                                    Toast.makeText(context, "Lỗi: Không tìm thấy ID khuyến mãi", Toast.LENGTH_SHORT).show()
+                                    isSubmitting = false
+                                    return@Button
+                                }
+                                
+                                if (code.isBlank()) {
+                                    Toast.makeText(context, "Vui lòng nhập mã khuyến mãi", Toast.LENGTH_SHORT).show()
+                                    isSubmitting = false
+                                    return@Button
+                                }
+                                
+                                val discountValueDouble = discountValue.toDoubleOrNull() ?: 0.0
+                                if (discountValueDouble <= 0) {
+                                    Toast.makeText(context, "Vui lòng nhập giá trị khuyến mãi hợp lệ", Toast.LENGTH_SHORT).show()
+                                    isSubmitting = false
+                                    return@Button
+                                }
+                                
                                 viewModel.updatePromotion(
                                     token = token,
-                                    promoId = promotion.id ?: promotionId,
+                                    promoId = finalPromoId,
                                     promoCode = code,
                                     promoType = discountType,
-                                    promoValue = discountValue.toDoubleOrNull() ?: 0.0,
+                                    promoValue = discountValueDouble,
                                     promoQuantity = quantity.toIntOrNull() ?: 1,
                                     promoDesc = description,
                                     promoMinOrderAmount = minOrderValue.toDoubleOrNull() ?: 0.0,
@@ -376,7 +397,7 @@ fun PromotionEditScreen(
                                             ?.set("promotion_refresh", true)
                                         navController.popBackStack()
                                     } else {
-                                        Toast.makeText(context, "Lỗi khi cập nhật khuyến mãi", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Lỗi khi cập nhật khuyến mãi. Vui lòng kiểm tra lại thông tin.", Toast.LENGTH_LONG).show()
                                     }
                                 }
                             },

@@ -47,7 +47,10 @@ class ProductViewModel @Inject constructor(
     }
 
     fun refreshProducts() {
-        loadProducts()
+        viewModelScope.launch {
+            repository.clearCache()
+            loadProducts()
+        }
     }
 }
 

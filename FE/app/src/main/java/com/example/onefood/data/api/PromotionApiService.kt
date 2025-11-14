@@ -193,10 +193,17 @@ class PromotionApiService(
             contentType(ContentType.Application.Json)
             setBody(body.toString())
         }
-
+        
+        val statusCode = response.status.value
         val bodyText = response.body<String>()
         val jsonString = extractJsonFromResponse(bodyText)
         val json = Json.parseToJsonElement(jsonString).jsonObject
+        
+        if (statusCode >= 400) {
+            val message = json["message"]?.jsonPrimitive?.content ?: "Lỗi khi cập nhật khuyến mãi"
+            throw Exception(message)
+        }
+        
         return json["success"].asBoolean()
     }
 

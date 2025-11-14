@@ -59,9 +59,27 @@ if ($method === 'PUT' || $method === 'POST') {
     $promo_active = isset($data['promo_active']) ? intval($data['promo_active']) : 1;
 
     // ✅ Kiểm tra dữ liệu bắt buộc
-    if (!$promo_id || empty($promo_code) || empty($promo_type) || $promo_value <= 0) {
+    $errors = [];
+    if (!$promo_id || $promo_id <= 0) {
+        $errors[] = 'ID khuyến mãi';
+    }
+    if (empty($promo_code)) {
+        $errors[] = 'Mã khuyến mãi';
+    }
+    if (empty($promo_type)) {
+        $errors[] = 'Loại khuyến mãi';
+    }
+    if ($promo_value <= 0) {
+        $errors[] = 'Giá trị khuyến mãi';
+    }
+    
+    if (!empty($errors)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Vui lòng nhập đầy đủ ID, Mã, Loại và Giá trị hợp lệ!']);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Vui lòng nhập đầy đủ: ' . implode(', ', $errors) . '!',
+            'missing_fields' => $errors
+        ]);
         exit();
     }
 

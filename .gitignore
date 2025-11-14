@@ -14,6 +14,7 @@
 /.idea/gradle.xml
 /.idea/inspectionProfiles.xml
 /.idea/vcs.xml
+/.BE/.env
 
 # THƯ MỤC BUILD VÀ OUTPUT (BẮT BUỘC)
 /build

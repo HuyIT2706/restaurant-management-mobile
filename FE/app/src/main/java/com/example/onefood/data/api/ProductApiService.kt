@@ -30,8 +30,28 @@ class ProductApiService(
         }
     }
     
-    suspend fun getProducts(): List<Product> {
-        return client.get("$baseUrl/products/product.php").body()
+    suspend fun getProducts(page: Int = 1, limit: Int = 50): List<Product> {
+        val response: String = client.get("$baseUrl/products/product.php") {
+            parameter("page", page)
+            parameter("limit", limit)
+        }.body()
+        
+        // Try to parse as paginated response first
+        return try {
+            val json = Json.parseToJsonElement(response).jsonObject
+            if (json.containsKey("data") && json.containsKey("pagination")) {
+                // New paginated format
+                json["data"]?.jsonArray?.mapNotNull { 
+                    Json.decodeFromJsonElement<Product>(it)
+                } ?: emptyList()
+            } else {
+                // Old format (backward compatible)
+                Json.decodeFromString<List<Product>>(response)
+            }
+        } catch (e: Exception) {
+            // Fallback to old format if parsing fails
+            Json.decodeFromString<List<Product>>(response)
+        }
     }
     
     suspend fun uploadImage(imageBytes: ByteArray, fileName: String, token: String): UploadImageResponse {

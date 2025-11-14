@@ -2,6 +2,7 @@ package com.example.onefood.main.home.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,15 +47,28 @@ fun PaymentScreen(
     val promotionCode by paymentViewModel.promotionCode.collectAsState()
     val selectedPaymentMethod by paymentViewModel.selectedPaymentMethod.collectAsState()
     val isPaid by paymentViewModel.isPaid.collectAsState()
+    val discountAmount by paymentViewModel.discountAmount.collectAsState()
+    val promotionValidationError by paymentViewModel.promotionValidationError.collectAsState()
+    val isValidatingPromotion by paymentViewModel.isValidatingPromotion.collectAsState()
+    val validatedPromotion by paymentViewModel.validatedPromotion.collectAsState()
+    val availablePromotions by paymentViewModel.availablePromotions.collectAsState()
+    val isLoadingPromotions by paymentViewModel.isLoadingPromotions.collectAsState()
     
     // Load order detail when screen is first displayed
     LaunchedEffect(orderId) {
         orderDetailViewModel.loadOrderDetail(context, orderId)
     }
     
+    // Load available promotions when order detail is loaded
+    LaunchedEffect(orderDetail?.totalAmount) {
+        val totalAmount = orderDetail?.totalAmount ?: 0
+        if (totalAmount > 0) {
+            paymentViewModel.loadAvailablePromotions(context, totalAmount)
+        }
+    }
+    
     // Calculate totals
     val totalAmount = orderDetail?.totalAmount ?: 0
-    val discountAmount = paymentViewModel.calculateDiscount(totalAmount, promotionCode)
     val finalAmount = totalAmount - discountAmount
     
     // Handle payment state changes
@@ -295,32 +309,95 @@ fun PaymentScreen(
                             }
                             
                             // Promotion Code Input
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    text = "Khuyến mãi:",
-                                    fontSize = 18.sp,
-                                    color = Color.Black
-                                )
-                                OutlinedTextField(
-                                    value = promotionCode,
-                                    onValueChange = { paymentViewModel.updatePromotionCode(it) },
-                                    placeholder = { Text("Nhập mã khuyến mãi") },
-                                    modifier = Modifier
-                                        .width(250.dp)
-                                        .padding(20.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Color(0xFFE0E0E0),
-                                        unfocusedBorderColor = Color(0xFFE0E0E0),
-                                        focusedContainerColor = Color.White,
-                                        unfocusedContainerColor = Color.White
-                                    ),
-                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp)
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        PromotionCodeDropdown(
+                                            promotionCode = promotionCode,
+                                            onPromotionCodeChange = { paymentViewModel.updatePromotionCode(it) },
+                                            availablePromotions = availablePromotions,
+                                            isLoadingPromotions = isLoadingPromotions,
+                                            onPromotionSelected = { promotion ->
+                                                paymentViewModel.selectPromotion(promotion)
+                                            },
+                                            enabled = !isValidatingPromotion,
+                                            hasError = promotionValidationError != null
+                                        )
+                                        Button(
+                                            onClick = {
+                                                paymentViewModel.validatePromotionCode(context, totalAmount)
+                                            },
+                                            enabled = promotionCode.isNotBlank() && !isValidatingPromotion,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = RedPrimary
+                                            ),
+                                            modifier = Modifier.height(56.dp)
+                                        ) {
+                                            if (isValidatingPromotion) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(20.dp),
+                                                    color = Color.White,
+                                                    strokeWidth = 2.dp
+                                                )
+                                            } else {
+                                                Text("Áp dụng", fontSize = 14.sp, color = Color.White)
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Show validation error or success message
+                                if (promotionValidationError != null) {
+                                    Text(
+                                        text = promotionValidationError ?: "",
+                                        fontSize = 14.sp,
+                                        color = Color.Red,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                } else if (validatedPromotion != null) {
+                                    val promotion = validatedPromotion!!
+                                    val desc = promotion.promo_desc
+                                    val discount = promotion.discount_amount?.toInt() ?: 0
+                                    Text(
+                                        text = if (desc != null) {
+                                            "Mã khuyến mãi đã được áp dụng"
+                                        } else {
+                                            "Mã khuyến mãi đã được áp dụng: Giảm ${discount.formatPrice()}"
+                                        },
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF4CAF50),
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
+                            }
+                            
+                            // Discount Amount (if any)
+                            if (discountAmount > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Giảm giá:",
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                    Text(
+                                        text = "- ${discountAmount.formatPrice().replace(" ₫", "")} VND",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
                             }
                             
                             // Final Amount
@@ -481,6 +558,131 @@ fun PaymentMethodDropdown(
                         expanded = false
                     }
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PromotionCodeDropdown(
+    promotionCode: String,
+    onPromotionCodeChange: (String) -> Unit,
+    availablePromotions: List<com.example.onefood.data.model.PromotionValidation>,
+    isLoadingPromotions: Boolean,
+    onPromotionSelected: (com.example.onefood.data.model.PromotionValidation) -> Unit,
+    enabled: Boolean = true,
+    hasError: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    ExposedDropdownMenuBox(
+        expanded = expanded && enabled && availablePromotions.isNotEmpty(),
+        onExpandedChange = { newExpanded ->
+            if (enabled && availablePromotions.isNotEmpty()) {
+                expanded = newExpanded
+            }
+        },
+        modifier = modifier.width(250.dp)
+    ) {
+        OutlinedTextField(
+            value = promotionCode,
+            onValueChange = { newValue ->
+                onPromotionCodeChange(newValue)
+                expanded = false
+            },
+            placeholder = { 
+                Text(
+                    text = if (isLoadingPromotions) "Đang tải..." else "Nhập hoặc chọn mã",
+                    fontSize = 14.sp
+                )
+            },
+            trailingIcon = {
+                Row {
+                    if (isLoadingPromotions) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.Gray,
+                            strokeWidth = 2.dp
+                        )
+                    } else if (availablePromotions.isNotEmpty()) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    }
+                }
+            },
+            readOnly = false,
+            enabled = enabled,
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (hasError) Color.Red else Color(0xFFE0E0E0),
+                unfocusedBorderColor = if (hasError) Color.Red else Color(0xFFE0E0E0),
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White
+            ),
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+            singleLine = true
+        )
+        if (availablePromotions.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded && enabled,
+                onDismissRequest = { expanded = false }
+            ) {
+                availablePromotions.forEach { promotion ->
+                    val discountText = if (promotion.discount_amount != null) {
+                        val discount = promotion.discount_amount!!.toInt()
+                        if (promotion.promo_type == "PhanTram") {
+                            "${promotion.promo_value?.toInt()}%"
+                        } else {
+                            "${discount.formatPrice()}"
+                        }
+                    } else {
+                        ""
+                    }
+                    
+                    DropdownMenuItem(
+                        text = { 
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = promotion.promo_code ?: "",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
+                                    )
+                                    Text(
+                                        text = discountText,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
+                                if (!promotion.promo_desc.isNullOrBlank()) {
+                                    Text(
+                                        text = promotion.promo_desc!!,
+                                        fontSize = 12.sp,
+                                        color = Color.Gray,
+                                        maxLines = 2
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            onPromotionSelected(promotion)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }

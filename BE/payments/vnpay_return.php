@@ -107,17 +107,39 @@ if ($secureHash == $vnp_SecureHash) {
                 error_log("Order already paid. Skipping update.");
                 $conn->rollback();
             } else {
-                // Cập nhật trạng thái ORDER (BƯỚC 1)
-                $sql_update_order = "UPDATE orders SET order_status = 'HoanThanh', order_updated_at = NOW() WHERE order_id = ?";
+                // Kiểm tra xem có promotion nào cho order này không
+                $sql_check_promo = "SELECT op.order_promo_id, op.promo_id, op.order_promo_amount, p.promo_type, p.promo_value 
+                                    FROM order_promotions op 
+                                    JOIN promotions p ON op.promo_id = p.promo_id 
+                                    WHERE op.order_id = ?";
+                $stmt_check_promo = $conn->prepare($sql_check_promo);
+                $stmt_check_promo->bind_param("i", $order_id_from_vnpay_ref);
+                $stmt_check_promo->execute();
+                $result_check_promo = $stmt_check_promo->get_result();
+                
+                $final_amount = $amount; // Mặc định là số tiền từ VNPay
+                
+                // Nếu có promotion, cập nhật order_totalamount với số tiền sau discount
+                if ($result_check_promo && $result_check_promo->num_rows > 0) {
+                    $promo_data = $result_check_promo->fetch_assoc();
+                    $discount_amount = floatval($promo_data['order_promo_amount']);
+                    error_log("Found promotion. Discount amount: " . $discount_amount);
+                    // order_totalamount sẽ được cập nhật với số tiền sau discount (đã được tính trong api_vnpay_create.php)
+                    $final_amount = $amount; // Số tiền đã trả là số tiền sau discount
+                }
+                $stmt_check_promo->close();
+                
+                // Cập nhật trạng thái ORDER và order_totalamount (BƯỚC 1)
+                $sql_update_order = "UPDATE orders SET order_status = 'HoanThanh', order_totalamount = ?, order_updated_at = NOW() WHERE order_id = ?";
                 $stmt_update_order = $conn->prepare($sql_update_order);
-                $stmt_update_order->bind_param("i", $order_id_from_vnpay_ref);
+                $stmt_update_order->bind_param("di", $final_amount, $order_id_from_vnpay_ref);
                 
                 if (!$stmt_update_order->execute()) {
                     throw new Exception("Failed to update order status: " . $stmt_update_order->error);
                 }
                 
                 $affected_rows = $stmt_update_order->affected_rows;
-                error_log("Order status updated. Affected rows: " . $affected_rows);
+                error_log("Order status updated. Affected rows: " . $affected_rows . ", Final amount: " . $final_amount);
                 $stmt_update_order->close();
                 
                 // Ghi nhận giao dịch vào bảng PAYMENTS (BƯỚC 2)
@@ -136,7 +158,35 @@ if ($secureHash == $vnp_SecureHash) {
                 error_log("Payment method length: " . strlen($payment_method));
                 error_log("Payment method hex: " . bin2hex($payment_method));
                 
-                $cashier_id = 0; // System/Auto
+                // Lấy user_id từ order (cashier_id hoặc user_id của order)
+                $sql_get_user = "SELECT cashier_id, user_id FROM orders WHERE order_id = ?";
+                $stmt_get_user = $conn->prepare($sql_get_user);
+                $stmt_get_user->bind_param("i", $order_id_from_vnpay_ref);
+                $stmt_get_user->execute();
+                $result_user = $stmt_get_user->get_result();
+                $user_data = $result_user->fetch_assoc();
+                $stmt_get_user->close();
+                
+                // Sử dụng cashier_id nếu có, nếu không thì dùng user_id, nếu không có thì NULL
+                $cashier_id = null;
+                if (!empty($user_data['cashier_id']) && $user_data['cashier_id'] > 0) {
+                    $cashier_id = intval($user_data['cashier_id']);
+                } else if (!empty($user_data['user_id']) && $user_data['user_id'] > 0) {
+                    $cashier_id = intval($user_data['user_id']);
+                }
+                
+                // Kiểm tra user_id có tồn tại không
+                if ($cashier_id !== null) {
+                    $sql_check_user = "SELECT user_id FROM users WHERE user_id = ?";
+                    $stmt_check_user = $conn->prepare($sql_check_user);
+                    $stmt_check_user->bind_param("i", $cashier_id);
+                    $stmt_check_user->execute();
+                    $result_check = $stmt_check_user->get_result();
+                    if ($result_check->num_rows == 0) {
+                        $cashier_id = null; // User không tồn tại, set về null
+                    }
+                    $stmt_check_user->close();
+                }
                 
                 $sql_payment = "INSERT INTO payments (order_id, user_id, payment_method, payment_amount_paid) VALUES (?, ?, ?, ?)";
                 $stmt_payment = $conn->prepare($sql_payment);

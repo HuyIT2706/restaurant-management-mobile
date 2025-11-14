@@ -30,6 +30,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
 import com.example.onefood.R
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
@@ -397,7 +399,7 @@ fun ProductScreen(
                         ) {
                             items(
                                 items = filteredProducts,
-                                key = { it.productId ?: "${it.name}_${it.hashCode()}" }
+                                key = { product -> product.id ?: product.productId ?: 0 }
                             ) { product ->
                                 ProductItemCard(
                                     product = product,
@@ -464,6 +466,8 @@ fun ProductItemCard(
     onDeleteClick: () -> Unit,
     onProductClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -490,7 +494,12 @@ fun ProductItemCard(
                 val displayImageUrl = product.getDisplayImageUrl()
                 if (displayImageUrl != null) {
                     AsyncImage(
-                        model = displayImageUrl,
+                        model = ImageRequest.Builder(context)
+                            .data(displayImageUrl)
+                            .size(Size(160, 160)) // Resize to 2x for retina displays (80dp * 2)
+                            .memoryCacheKey(displayImageUrl)
+                            .diskCacheKey(displayImageUrl)
+                            .build(),
                         contentDescription = product.name,
                         modifier = Modifier
                             .fillMaxSize()

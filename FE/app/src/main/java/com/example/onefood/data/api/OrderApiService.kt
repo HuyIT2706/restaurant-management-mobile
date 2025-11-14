@@ -6,6 +6,7 @@ import com.example.onefood.data.model.OrderDetail
 import com.example.onefood.data.model.OrderDetailResponse
 import com.example.onefood.data.model.OrderListItem
 import com.example.onefood.data.model.OrderListResponse
+import com.example.onefood.data.model.PromotionValidation
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.*
@@ -31,7 +32,7 @@ class OrderApiService(
         }
     }
     
-    suspend fun createVnPayUrl(orderId: Int, token: String, bankCode: String = "NCB"): String {
+    suspend fun createVnPayUrl(orderId: Int, token: String, bankCode: String = "NCB", promoCode: String? = null, promoId: Int? = null): String {
         try {
             val responseText = try {
                 val response = client.post("$baseUrl/payments/api_vnpay_create.php") {
@@ -44,6 +45,12 @@ class OrderApiService(
                         put("order_id", orderId)
                         if (bankCode.isNotBlank()) {
                             put("bank_code", bankCode)
+                        }
+                        if (promoCode != null && promoCode.isNotBlank()) {
+                            put("promo_code", promoCode)
+                        }
+                        if (promoId != null) {
+                            put("promo_id", promoId)
                         }
                     }
                     setBody(TextContent(body.toString(), ContentType.Application.Json))
@@ -89,16 +96,25 @@ class OrderApiService(
         }
     }
 
-    suspend fun payOrderWithCash(orderId: Int, token: String): String {
+    suspend fun payOrderWithCash(orderId: Int, token: String, promoCode: String? = null, promoId: Int? = null): String {
         try {
             val responseText = try {
+                val body = buildJsonObject {
+                    put("order_id", orderId)
+                    if (promoCode != null && promoCode.isNotBlank()) {
+                        put("promo_code", promoCode)
+                    }
+                    if (promoId != null) {
+                        put("promo_id", promoId)
+                    }
+                }
                 val response = client.post("$baseUrl/payments/api_payment_cash.php") {
                     headers {
                         append("Authorization", "Bearer $token")
                         append("Accept", "application/json")
                     }
                     contentType(ContentType.Application.Json)
-                    setBody(TextContent("""{"order_id": $orderId}""", ContentType.Application.Json))
+                    setBody(TextContent(body.toString(), ContentType.Application.Json))
                 }
                 val statusCode = response.status.value
                 val bodyText = response.body<String>()
@@ -359,6 +375,157 @@ class OrderApiService(
                 else -> {
                     e.message ?: "Lỗi kết nối: ${e.localizedMessage ?: "Không xác định"}"
                 }
+            }
+            throw Exception(errorMessage, e)
+        }
+    }
+    
+    suspend fun validatePromotionCode(promoCode: String, orderAmount: Int, token: String): PromotionValidation {
+        try {
+            val responseText = try {
+                val response = client.post("$baseUrl/promotions/api_promotion_validate.php") {
+                    headers {
+                        append("Authorization", "Bearer $token")
+                        append("Accept", "application/json")
+                    }
+                    contentType(ContentType.Application.Json)
+                    val body = buildJsonObject {
+                        put("promo_code", promoCode)
+                        put("order_amount", orderAmount)
+                    }
+                    setBody(TextContent(body.toString(), ContentType.Application.Json))
+                }
+                val statusCode = response.status.value
+                val bodyText = response.body<String>()
+                if (statusCode >= 400) {
+                    val jsonString = extractJsonFromResponse(bodyText)
+                    val json = Json.parseToJsonElement(jsonString).jsonObject
+                    val message = json["message"]?.jsonPrimitive?.content
+                    throw Exception(
+                        when (statusCode) {
+                            403 -> message ?: "Bạn không có quyền validate mã khuyến mãi."
+                            401 -> message ?: "Không có quyền thực hiện thao tác này. Vui lòng đăng nhập lại."
+                            400 -> message ?: "Mã khuyến mãi không hợp lệ."
+                            404 -> message ?: "Mã khuyến mãi không tồn tại."
+                            500 -> message ?: "Lỗi hệ thống. Vui lòng thử lại sau."
+                            else -> message ?: "Lỗi kết nối: HTTP $statusCode"
+                        }
+                    )
+                }
+                bodyText
+            } catch (e: Exception) {
+                throw e
+            }
+
+            val jsonString = extractJsonFromResponse(responseText)
+            val json = Json.parseToJsonElement(jsonString).jsonObject
+            val success = json["success"]?.jsonPrimitive?.booleanOrNull ?: false
+            if (!success) {
+                val message = json["message"]?.jsonPrimitive?.content ?: "Mã khuyến mãi không hợp lệ."
+                throw Exception(message)
+            }
+            val promotionJson = json["promotion"]?.jsonObject
+            if (promotionJson == null) {
+                throw Exception("Không nhận được thông tin khuyến mãi từ server.")
+            }
+            
+            // Parse promotion validation response
+            val promoId = promotionJson["promo_id"]?.jsonPrimitive?.content?.toIntOrNull()
+            val promoCode = promotionJson["promo_code"]?.jsonPrimitive?.content
+            val promoType = promotionJson["promo_type"]?.jsonPrimitive?.content
+            val promoValue = promotionJson["promo_value"]?.jsonPrimitive?.content?.toDoubleOrNull()
+            val promoDesc = promotionJson["promo_desc"]?.jsonPrimitive?.content
+            val discountAmount = promotionJson["discount_amount"]?.jsonPrimitive?.content?.toDoubleOrNull()
+            val finalAmount = promotionJson["final_amount"]?.jsonPrimitive?.content?.toDoubleOrNull()
+            
+            return PromotionValidation(
+                promo_id = promoId,
+                promo_code = promoCode,
+                promo_type = promoType,
+                promo_value = promoValue,
+                promo_desc = promoDesc,
+                discount_amount = discountAmount,
+                final_amount = finalAmount
+            )
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host") == true -> "Không thể kết nối đến server."
+                e.message?.contains("Connection refused") == true -> "Server từ chối kết nối."
+                else -> e.message ?: "Lỗi validate mã khuyến mãi."
+            }
+            throw Exception(errorMessage, e)
+        }
+    }
+    
+    suspend fun getAvailablePromotions(orderAmount: Int, token: String): List<PromotionValidation> {
+        try {
+            val responseText = try {
+                val response = client.post("$baseUrl/promotions/api_promotion_available.php") {
+                    headers {
+                        append("Authorization", "Bearer $token")
+                        append("Accept", "application/json")
+                    }
+                    contentType(ContentType.Application.Json)
+                    val body = buildJsonObject {
+                        put("order_amount", orderAmount)
+                    }
+                    setBody(TextContent(body.toString(), ContentType.Application.Json))
+                }
+                val statusCode = response.status.value
+                val bodyText = response.body<String>()
+                if (statusCode >= 400) {
+                    val jsonString = extractJsonFromResponse(bodyText)
+                    val json = Json.parseToJsonElement(jsonString).jsonObject
+                    val message = json["message"]?.jsonPrimitive?.content
+                    throw Exception(
+                        when (statusCode) {
+                            403 -> message ?: "Bạn không có quyền lấy danh sách khuyến mãi."
+                            401 -> message ?: "Không có quyền thực hiện thao tác này. Vui lòng đăng nhập lại."
+                            400 -> message ?: "Thiếu giá trị đơn hàng."
+                            500 -> message ?: "Lỗi hệ thống. Vui lòng thử lại sau."
+                            else -> message ?: "Lỗi kết nối: HTTP $statusCode"
+                        }
+                    )
+                }
+                bodyText
+            } catch (e: Exception) {
+                throw e
+            }
+
+            val jsonString = extractJsonFromResponse(responseText)
+            val json = Json.parseToJsonElement(jsonString).jsonObject
+            val success = json["success"]?.jsonPrimitive?.booleanOrNull ?: false
+            if (!success) {
+                val message = json["message"]?.jsonPrimitive?.content ?: "Không thể lấy danh sách khuyến mãi."
+                throw Exception(message)
+            }
+            
+            val promotionsArray = json["promotions"]?.jsonArray
+            if (promotionsArray == null) {
+                return emptyList()
+            }
+            
+            return promotionsArray.mapNotNull { element ->
+                try {
+                    val promoJson = element.jsonObject
+                    PromotionValidation(
+                        promo_id = promoJson["promo_id"]?.jsonPrimitive?.content?.toIntOrNull(),
+                        promo_code = promoJson["promo_code"]?.jsonPrimitive?.content,
+                        promo_type = promoJson["promo_type"]?.jsonPrimitive?.content,
+                        promo_value = promoJson["promo_value"]?.jsonPrimitive?.content?.toDoubleOrNull(),
+                        promo_desc = promoJson["promo_desc"]?.jsonPrimitive?.content,
+                        discount_amount = promoJson["discount_amount"]?.jsonPrimitive?.content?.toDoubleOrNull(),
+                        final_amount = promoJson["final_amount"]?.jsonPrimitive?.content?.toDoubleOrNull()
+                    )
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            val errorMessage = when {
+                e.message?.contains("Unable to resolve host") == true -> "Không thể kết nối đến server."
+                e.message?.contains("Connection refused") == true -> "Server từ chối kết nối."
+                else -> e.message ?: "Lỗi lấy danh sách khuyến mãi."
             }
             throw Exception(errorMessage, e)
         }

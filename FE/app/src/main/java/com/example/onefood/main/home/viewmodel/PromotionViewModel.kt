@@ -141,6 +141,20 @@ class PromotionViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                // Validate before calling API
+                if (promoId <= 0) {
+                    onComplete(false)
+                    return@launch
+                }
+                if (promoCode.isBlank()) {
+                    onComplete(false)
+                    return@launch
+                }
+                if (promoValue <= 0) {
+                    onComplete(false)
+                    return@launch
+                }
+                
                 val ok = service.updatePromotion(
                     token,
                     promoId,

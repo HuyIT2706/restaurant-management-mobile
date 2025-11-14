@@ -183,7 +183,10 @@ fun OrderDetailStaff(
                     // Order Items List using LazyColumn items
                     items(
                         items = orderDetail!!.orderItems,
-                        key = { item -> "${item.productName}_${item.notes}_${item.quantity}" }
+                        key = { item -> 
+                            // Use productId + notes as stable key, fallback to index
+                            "${item.productName}_${item.notes}".hashCode()
+                        }
                     ) { item ->
                         OrderDetailItemCard(item = item)
                     }

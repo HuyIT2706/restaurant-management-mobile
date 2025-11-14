@@ -1,14 +1,17 @@
 package com.example.onefood.di
 
+import android.content.Context
 import com.example.onefood.data.api.ProductApiService
 import com.example.onefood.data.api.TableApiService
 import com.example.onefood.data.api.OrderApiService
 import com.example.onefood.data.api.UserApiService
 import com.example.onefood.data.repository.UserRepository
 import com.example.onefood.data.api.StatisticsApiService
+import com.example.onefood.data.cache.ApiCache
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -34,7 +37,9 @@ object NetworkModule {
     // Ktor HttpClient for Product API
     @Provides
     @Singleton
-    fun provideKtorClient(): HttpClient {
+    fun provideKtorClient(@ApplicationContext context: Context): HttpClient {
+        val isDebug = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        
         return HttpClient(CIO) {
             install(ContentNegotiation) {
                 json(Json {
@@ -42,8 +47,11 @@ object NetworkModule {
                     isLenient = true
                 })
             }
-            install(Logging) {
-                level = LogLevel.BODY
+            // Only enable logging in debug mode
+            if (isDebug) {
+                install(Logging) {
+                    level = LogLevel.BODY
+                }
             }
         }
     }
@@ -75,12 +83,18 @@ object NetworkModule {
     // Retrofit for Table API (keep existing)
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply {
+    fun provideOkHttpClient(@ApplicationContext context: Context): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+        
+        // Only add logging interceptor in debug mode
+        val isDebug = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebug) {
+            builder.addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             })
-            .build()
+        }
+        
+        return builder.build()
     }
 
     @Provides
@@ -117,4 +131,5 @@ object NetworkModule {
     fun provideStatisticsApiService(client: HttpClient): StatisticsApiService {
         return StatisticsApiService(client, BASE_URL)
     }
+    
 }
