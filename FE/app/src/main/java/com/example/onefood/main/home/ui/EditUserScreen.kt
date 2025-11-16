@@ -60,16 +60,34 @@ fun EditUserScreenTopBar(navController: NavController, onSave: () -> Boolean) {
 fun EditUserScreen(navController: NavController) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
-    var fullName by remember { mutableStateOf(prefs.getString("user_name", "") ?: "") }
+    val userNameFromPrefs = prefs.getString("user_name", "") ?: ""
+    val fullName = if (userNameFromPrefs.isNotEmpty() && userNameFromPrefs.contains(" ")) {
+        val parts = userNameFromPrefs.split(" ")
+        if (parts.size >= 2) {
+            val firstname = parts.last()
+            val lastname = parts.dropLast(1).joinToString(" ")
+            "$firstname $lastname"
+        } else {
+            userNameFromPrefs
+        }
+    } else {
+        userNameFromPrefs
+    }
     var phone by remember { mutableStateOf(prefs.getString("user_phone", "") ?: "") }
-    var gender by remember { mutableStateOf("") }
+    val userRole = prefs.getString("user_role", "") ?: ""
+    val roleDisplayName = when (userRole) {
+        "QuanLy" -> "Quản lý"
+        "ThuNgan" -> "Thu ngân"
+        "Order" -> "Nhân viên order"
+        "ThuNga" -> "Thu ngân"
+        else -> userRole.ifEmpty { "Không có dữ liệu" }
+    }
 
     Scaffold(
         topBar = {
             EditUserScreenTopBar(
                 navController = navController,
                 onSave = {
-                    // Save user info
                     navController.popBackStack()
                 }
             )
@@ -87,7 +105,6 @@ fun EditUserScreen(navController: NavController) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Profile Picture
             Box(
                 modifier = Modifier.size(120.dp)
             ) {
@@ -97,9 +114,8 @@ fun EditUserScreen(navController: NavController) {
                         .clip(CircleShape)
                         .background(Color.Gray.copy(alpha = 0.3f))
                 )
-                // Camera icon overlay
                 IconButton(
-                    onClick = { /* Change profile picture */ },
+                    onClick = { },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(36.dp)
@@ -116,7 +132,6 @@ fun EditUserScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Your Information Section
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -128,7 +143,6 @@ fun EditUserScreen(navController: NavController) {
                     color = Color.Black
                 )
 
-                // Full name
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Họ và tên",
@@ -138,7 +152,7 @@ fun EditUserScreen(navController: NavController) {
                     )
                     OutlinedTextField(
                         value = fullName,
-                        onValueChange = { fullName = it },
+                        onValueChange = { },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         enabled = false,
@@ -151,7 +165,6 @@ fun EditUserScreen(navController: NavController) {
                     )
                 }
 
-                // Phone (read-only)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Phone",
@@ -174,17 +187,16 @@ fun EditUserScreen(navController: NavController) {
                     )
                 }
 
-                // Gender (read-only, if available)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Giới tính",
+                        text = "Chức vụ",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color.Black
                     )
                     OutlinedTextField(
-                        value = gender,
-                        onValueChange = { gender = it },
+                        value = roleDisplayName,
+                        onValueChange = { },
                         placeholder = { Text("Không có dữ liệu") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),

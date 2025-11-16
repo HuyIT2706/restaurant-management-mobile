@@ -22,6 +22,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -34,7 +35,6 @@ object NetworkModule {
 
     private const val BASE_URL = "https://onefood.id.vn/BE/"
 
-    // Ktor HttpClient for Product API
     @Provides
     @Singleton
     fun provideKtorClient(@ApplicationContext context: Context): HttpClient {
@@ -47,7 +47,6 @@ object NetworkModule {
                     isLenient = true
                 })
             }
-            // Only enable logging in debug mode
             if (isDebug) {
                 install(Logging) {
                     level = LogLevel.BODY
@@ -80,13 +79,27 @@ object NetworkModule {
         return OrderApiService(client, BASE_URL)
     }
 
-    // Retrofit for Table API (keep existing)
     @Provides
     @Singleton
     fun provideOkHttpClient(@ApplicationContext context: Context): OkHttpClient {
         val builder = OkHttpClient.Builder()
         
-        // Only add logging interceptor in debug mode
+        val prefs = context.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
+        builder.addInterceptor(Interceptor { chain ->
+            val originalRequest = chain.request()
+            val token = prefs.getString("jwt_token", null)
+            
+            val newRequest = if (token != null && token.isNotEmpty()) {
+                originalRequest.newBuilder()
+                    .header("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                originalRequest
+            }
+            
+            chain.proceed(newRequest)
+        })
+        
         val isDebug = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (isDebug) {
             builder.addInterceptor(HttpLoggingInterceptor().apply {
