@@ -1,7 +1,12 @@
 package com.example.onefood.main.home.viewmodel
 
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,11 +14,43 @@ import javax.inject.Inject
 import com.example.onefood.data.model.CartItem
 
 @HiltViewModel
-class CartViewModel @Inject constructor() : ViewModel() {
+class CartViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val moshi: Moshi
+) : ViewModel() {
     
-    // Map<TableId, List<CartItem>> - Giỏ hàng theo từng bàn
-    private val _cartItems = MutableStateFlow<Map<Int, List<CartItem>>>(emptyMap())
+    private val prefs: SharedPreferences = context.getSharedPreferences("onefood_prefs", Context.MODE_PRIVATE)
+    private val CART_KEY = "cart_items"
+    
+    private val cartMapType = Types.newParameterizedType(
+        Map::class.java,
+        Int::class.javaObjectType,
+        Types.newParameterizedType(
+            List::class.java,
+            CartItem::class.java
+        )
+    )
+    private val cartAdapter = moshi.adapter<Map<Int, List<CartItem>>>(cartMapType)
+    
+    private val _cartItems = MutableStateFlow<Map<Int, List<CartItem>>>(loadCartFromPrefs())
     val cartItems: StateFlow<Map<Int, List<CartItem>>> = _cartItems.asStateFlow()
+    
+    private fun loadCartFromPrefs(): Map<Int, List<CartItem>> {
+        val cartJson = prefs.getString(CART_KEY, null) ?: return emptyMap()
+        return try {
+            cartAdapter.fromJson(cartJson) ?: emptyMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+    
+    private fun saveCartToPrefs(cart: Map<Int, List<CartItem>>) {
+        try {
+            val cartJson = cartAdapter.toJson(cart)
+            prefs.edit().putString(CART_KEY, cartJson).apply()
+        } catch (e: Exception) {
+        }
+    }
     
     // Lấy giỏ hàng của một bàn cụ thể
     fun getCartItemsForTable(tableId: Int): List<CartItem> {
@@ -61,11 +98,11 @@ class CartViewModel @Inject constructor() : ViewModel() {
             tableItems.add(item)
         }
         
-        // Update the table's items in the new map
-        newCart[tableId] = tableItems.toList() // Create new immutable list
+        newCart[tableId] = tableItems.toList()
         
-        // Update StateFlow with new map (this will trigger recomposition)
-        _cartItems.value = newCart.toMap()
+        val finalCart = newCart.toMap()
+        _cartItems.value = finalCart
+        saveCartToPrefs(finalCart)
     }
     
     // Cập nhật quantity của một item
@@ -87,10 +124,11 @@ class CartViewModel @Inject constructor() : ViewModel() {
             val updatedItems = tableItems.toMutableList()
             updatedItems[index] = updatedItems[index].copy(quantity = newQuantity)
             
-            // Create new map with new list
             val newCart = currentCart.toMutableMap()
             newCart[tableId] = updatedItems.toList()
-            _cartItems.value = newCart.toMap()
+            val finalCart = newCart.toMap()
+            _cartItems.value = finalCart
+            saveCartToPrefs(finalCart)
         }
     }
     
@@ -104,7 +142,6 @@ class CartViewModel @Inject constructor() : ViewModel() {
             it.productId == itemId && it.notes == notes 
         }
         
-        // Create new map
         val newCart = currentCart.toMutableMap()
         if (updatedItems.isEmpty()) {
             newCart.remove(tableId)
@@ -112,20 +149,23 @@ class CartViewModel @Inject constructor() : ViewModel() {
             newCart[tableId] = updatedItems
         }
         
-        _cartItems.value = newCart.toMap()
+        val finalCart = newCart.toMap()
+        _cartItems.value = finalCart
+        saveCartToPrefs(finalCart)
     }
     
-    // Xóa toàn bộ giỏ hàng của một bàn
     fun clearCartForTable(tableId: Int) {
         val currentCart = _cartItems.value
         val newCart = currentCart.toMutableMap()
         newCart.remove(tableId)
-        _cartItems.value = newCart.toMap()
+        val finalCart = newCart.toMap()
+        _cartItems.value = finalCart
+        saveCartToPrefs(finalCart)
     }
     
-    // Xóa toàn bộ giỏ hàng
     fun clearAllCarts() {
         _cartItems.value = emptyMap()
+        saveCartToPrefs(emptyMap())
     }
     
     // Kiểm tra bàn có giỏ hàng không
