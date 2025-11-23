@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -43,6 +46,19 @@ android {
         buildConfig = true
     }
     
+    // Load keystore properties for signing
+    val keystoreFile = rootProject.file("onefood-release.keystore")
+    if (keystoreFile.exists()) {
+        signingConfigs {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = "onefood123"
+                keyAlias = "onefood"
+                keyPassword = "onefood123"
+            }
+        }
+    }
+    
     buildTypes {
         debug {
             isDebuggable = true
@@ -50,6 +66,9 @@ android {
         release {
             isMinifyEnabled = false
             isDebuggable = false
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),        
                 "proguard-rules.pro"

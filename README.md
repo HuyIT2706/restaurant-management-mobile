@@ -1,9 +1,7 @@
-﻿#  ỨNG DỤNG QUẢN LÝ GỌI MÓN NHÀ HÀNG
+﻿#  Hệ thống Quản lý Nhà hàng OneFood (OneFood Restaurant Management System)
 
-##  Ý tưởng dự án
-Ứng dụng hỗ trợ **quản lý gọi món** cho nhà hàng, giúp tối ưu quy trình phục vụ – từ order món, thanh toán đến quản lý doanh thu.  
-Phù hợp cho **nhà hàng vừa và nhỏ**, dễ triển khai, dễ sử dụng.
-
+##  Mô tả dự án
+OneFood là một ứng dụng di động (nền tảng Android) được thiết kế để hỗ trợ các nhà hàng quản lý các hoạt động hàng ngày, từ việc nhận order và xử lý thanh toán đến quản lý sản phẩm, nhân viên và doanh thu. Dự án này sử dụng PHP và MySQL cho Backend, cung cấp một RESTful API để tích hợp liền mạch với ứng dụng di động Android được xây dựng bằng Jetpack Compose. Hệ thống được tối ưu hóa cho các nhà hàng quy mô nhỏ đến vừa, mang lại giao diện trực quan và quy trình làm việc hiệu quả.
 ---
 
 ## 👥 Đối tượng người dùng
@@ -12,23 +10,28 @@ Phù hợp cho **nhà hàng vừa và nhỏ**, dễ triển khai, dễ sử dụ
 -  **Quản lý (Manager)**  
 
 ---
+## Cấu trúc dự án:
+- ![alt text](image-2.png)
 
-##  Chức năng theo vai trò
+---
 
-### 1️⃣ Nhân viên Order
-- Quản lý **bàn ăn**: hiển thị sơ đồ bàn (trống / đã đặt / đang phục vụ).  
-- **Tạo Order**: chọn bàn → chọn món trong menu → nhập số lượng → thêm ghi chú (ví dụ: ít cay, thêm nước...).
+##  Các chức năng chính:
 
-### 2️⃣ Nhân viên Thu ngân
-- **Thanh toán hóa đơn**: lấy order đã hoàn thành → tính tổng tiền.  
-- **Xem chi tiết hóa đơn**: hiển thị món, số lượng, giá, khuyến mãi.  
-- **Xử lý nhiều phương thức thanh toán**: tiền mặt, mã QR.
+- Quản lý Bàn (Table Management): Hiển thị bố cục bàn trực quan, cho biết trạng thái bàn (trống, có khách, đang phục vụ) với cập nhật theo thời gian thực.
 
-### 3️⃣ Quản lý (Manager)
-- **Quản lý tài khoản nhân viên**: thêm, sửa, xóa tài khoản nhân viên order / thu ngân.  
-- **Quản lý sản phẩm**: thêm món mới, chỉnh sửa thông tin món, cập nhật giá, hình ảnh.  
-- **Quản lý khuyến mãi**: tạo chương trình giảm giá, voucher.  
-- **Thống kê doanh thu**: Xem các món ăn được bán ở bàn nào.
+- Quản lý Đơn hàng (Order Management): Tạo và quản lý đơn hàng bằng cách chọn bàn, thêm các món ăn với số lượng và ghi chú đặc biệt.
+
+- Quản lý Sản phẩm (Product Management): Thêm, cập nhật, xóa và tìm kiếm sản phẩm theo tên, danh mục hoặc giá. Tải lên và quản lý hình ảnh sản phẩm.
+ 
+- Xử lý Thanh toán (Payment Processing): Xử lý nhiều phương thức thanh toán bao gồm tiền mặt và mã QR (tích hợp VNPay) với hệ thống tự động tính toán chiết khấu.
+
+- Quản lý Khuyến mại (Promotion Management): Tạo và quản lý các chiến dịch khuyến mại, mã giảm giá (discount codes) và voucher với hệ thống xác thực.
+
+- Quản lý Nhân viên (Staff Management): Đăng ký và quản lý tài khoản nhân viên với kiểm soát truy cập dựa trên vai trò (Order Staff, Cashier, Manager).
+ 
+- Thống kê Doanh thu (Revenue Statistics): Tạo các báo cáo về doanh số, doanh thu theo kỳ, và theo dõi chi tiết đơn hàng theo bàn.
+ 
+- Truy cập dựa trên Vai trò (Role-Based Access): Giao diện và quyền hạn khác nhau cho các vai trò Order Staff, Cashier và Manager.
 
 ---
 
@@ -56,6 +59,16 @@ Phù hợp cho **nhà hàng vừa và nhỏ**, dễ triển khai, dễ sử dụ
    B2. cd folder FE
    B3. Ctr + Shift + O để biuld các thư viện của app sử dụng 
    B4. Chạy chương trình.
+
+2. Đối với người dùng Android 
+
+   ```bash
+   B1: Quét mã QR 
+   (+) ![alt text](image.png)
+   B2. Tải xuống và cài đặt chạy thử.
+
+3. Thông tin ngân hàng test VNPAY
+- ![alt text](image-1.png)
 
 
 

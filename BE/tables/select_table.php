@@ -22,9 +22,7 @@ $data = json_decode(file_get_contents('php://input'), true);
 if (!$data || !isset($data['table_id'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Thiếu mã bàn'], JSON_UNESCAPED_UNICODE);
-    exit();
-
-    
+    exit;
 }
 
 $table_id = intval($data['table_id']);

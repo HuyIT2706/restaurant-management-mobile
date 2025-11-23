@@ -15,9 +15,18 @@
 /BE/.env
 /.env
 
+# Keystore files (do not commit!)
+*.keystore
+FE/key.properties
+FE/*.keystore
+
 /build
 /app/build
 /captures
 .externalNativeBuild
 .cxx
 .gradle
+
+/InfoVNPAY.png
+/ProjectStructure
+/QrDownloadApp
