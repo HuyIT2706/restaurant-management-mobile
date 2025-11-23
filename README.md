@@ -11,7 +11,7 @@ OneFood là một ứng dụng di động (nền tảng Android) được thiế
 
 ---
 ## Cấu trúc dự án:
-- ![alt text](image-2.png)
+- ![alt text](ProjectStructure.png)
 
 ---
 
@@ -64,11 +64,11 @@ OneFood là một ứng dụng di động (nền tảng Android) được thiế
 
    ```bash
    B1: Quét mã QR 
-   (+) ![alt text](image.png)
+   (+) ![alt text](QrDownloadApp.png)
    B2. Tải xuống và cài đặt chạy thử.
 
 3. Thông tin ngân hàng test VNPAY
-- ![alt text](image-1.png)
+- ![alt text](InfoVNPAY.png)
 
 
 
