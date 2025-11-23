@@ -62,13 +62,13 @@ OneFood là một ứng dụng di động (nền tảng Android) được thiế
 
 2. Đối với người dùng Android 
 
-   ```bash
-   B1: Quét mã QR để tải APK
-   B2. Tải xuống và cài đặt chạy thử.
-   ```
+-   B1: Quét mã QR để tải APK
+   - ![alt text](image.png)
+-  B2. Tải xuống và cài đặt chạy thử.
+   
 
 3. Thông tin ngân hàng test VNPAY
-- Sử dụng thông tin test của VNPay để thanh toán thử nghiệm trong ứng dụng
+- ![alt text](image-1.png)
 
 
 
